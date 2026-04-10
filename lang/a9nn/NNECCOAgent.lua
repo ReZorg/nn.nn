@@ -11,9 +11,10 @@
 --   • EchoBeats 12-step cognitive loop
 --   • Hardware-style register interface
 
-local nn     = require('a9nn.nn_ns')
-local Tensor = nn.Tensor
-local Class  = nn.Class
+local ns     = require('a9nn.nn_ns')
+local Tensor = ns.Tensor
+local Class  = ns.Class
+local nn     = ns   -- alias; TruthValue resolved lazily below
 
 local NNECCOAgent, parent = Class.class('nn.NNECCOAgent', 'nn.CognitiveAgent')
 
@@ -390,11 +391,11 @@ function NNECCOAgent:_beat_INTEGRATE(ctx)
 
    -- Update knowledge base with current experience
    if self.knowledge then
-      local tv_mod = Class.get('nn.AtomSpace')
-      -- Add a concept for this cycle
-      self.knowledge:addNode("EpisodeNode",
-         "cycle_" .. self.cycleCount,
-         {strength = math.max(0, 1 - (ctx.loss or 0)), count = 1})
+      -- Resolve TruthValue from the AtomSpace module (already loaded)
+      local atomMod = require('a9nn.AtomSpace')
+      local tv = atomMod.TruthValue.new(math.max(0, 1 - (ctx.loss or 0)), 1)
+      -- Add an episode node for this cycle with a proper TruthValue object
+      self.knowledge:addNode("EpisodeNode", "cycle_" .. self.cycleCount, tv)
    end
 
    -- Advance registers

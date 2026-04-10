@@ -110,15 +110,18 @@ function Module:clearState()
    self.gradInput = Tensor.zeros(1)
 end
 
---- Returns a string description of this module.
--- Subclasses should override this method (not __tostring directly).
+--- Returns a human-readable description of this module.
+-- Override this in subclasses to customise how the module prints.
+-- This follows the torch/nn convention (see lang/lua/Sequential.lua et al.):
+-- subclasses override __tostring__() while __tostring() is the raw Lua hook.
 function Module:__tostring__()
    return Class.typename(self) or 'nn.Module'
 end
 
--- Lua's tostring() hook — delegates to __tostring__ (note: these are distinct
--- methods with different names; __tostring__ has double underscores on both sides
--- and is the user-overridable method, while __tostring is Lua's metamethod).
+-- Lua's __tostring metamethod hook.  Calls the user-overridable __tostring__
+-- method (note: these are *distinct* names — __tostring__ has underscores on
+-- both sides and is the subclass-overridable API, matching the torch/nn
+-- convention used throughout lang/lua/).
 function Module:__tostring()
    return Module.__tostring__(self)
 end
