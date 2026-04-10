@@ -83,11 +83,12 @@ function EpisodicMemory:sample(n)
                if not chosenSet[idx] then
                   chosen[#chosen+1] = idx
                   chosenSet[idx]    = true
+                  added = true
                   break
                end
             end
             -- If still not added (all items exhausted), break to avoid infinite loop
-            if #chosen == 0 or not added then break end
+            if not added then break end
          end
       end
 
