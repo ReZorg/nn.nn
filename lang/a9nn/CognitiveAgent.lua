@@ -184,7 +184,8 @@ function CognitiveAgent:aggregateVote(state)
    for a = 1, self.actionSize do votes[a] = 0 end
 
    -- Self vote
-   votes[self:act(state)] = votes[self:act(state)] + 1
+   local selfAction = self:act(state)
+   votes[selfAction] = votes[selfAction] + 1
 
    for _, sub in pairs(self.subordinates) do
       local a = sub:act(state)
