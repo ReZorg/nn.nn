@@ -200,11 +200,11 @@ end
 function LLaMAOrchestrator:_ping(inst)
    if not http then return false end
    local url = string.format("http://127.0.0.1:%d/health", inst.port)
-   local ok, _ = pcall(function()
+   local ok, result = pcall(function()
       local body, code = http.request(url)
       return code == 200
    end)
-   return ok
+   return ok and result
 end
 
 --- Real HTTP generation request.
