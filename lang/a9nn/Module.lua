@@ -110,12 +110,17 @@ function Module:clearState()
    self.gradInput = Tensor.zeros(1)
 end
 
+--- Returns a string description of this module.
+-- Subclasses should override this method (not __tostring directly).
 function Module:__tostring__()
    return Class.typename(self) or 'nn.Module'
 end
 
+-- Lua's tostring() hook — delegates to __tostring__ (note: these are distinct
+-- methods with different names; __tostring__ has double underscores on both sides
+-- and is the user-overridable method, while __tostring is Lua's metamethod).
 function Module:__tostring()
-   return self:__tostring__()
+   return Module.__tostring__(self)
 end
 
 return Module

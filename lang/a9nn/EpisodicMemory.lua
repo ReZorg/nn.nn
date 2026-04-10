@@ -63,23 +63,31 @@ function EpisodicMemory:sample(n)
       local chosen = {}
       local chosenSet = {}
       while #chosen < n do
-         local r   = math.random() * prioSum
-         local cum = 0
+         local r    = math.random() * prioSum
+         local cum  = 0
+         local added = false
          for i = 1, self.count do
             cum = cum + (self.priorities[i]^self.alpha)
             if cum >= r and not chosenSet[i] then
                chosen[#chosen+1] = i
                chosenSet[i]      = true
+               added = true
                break
             end
          end
-         -- safety: if we looped without finding (edge case), pick random
-         if #chosen < #chosen then
-            local idx = math.random(self.count)
-            if not chosenSet[idx] then
-               chosen[#chosen+1] = idx
-               chosenSet[idx]    = true
+         -- safety: if weighted-random walk found no unchosen item
+         -- (can happen when all items are already chosen), pick a random one
+         if not added then
+            for _ = 1, self.count do
+               local idx = math.random(self.count)
+               if not chosenSet[idx] then
+                  chosen[#chosen+1] = idx
+                  chosenSet[idx]    = true
+                  break
+               end
             end
+            -- If still not added (all items exhausted), break to avoid infinite loop
+            if #chosen == 0 or (#chosen > 0 and not added) then break end
          end
       end
 
