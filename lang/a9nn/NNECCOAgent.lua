@@ -112,7 +112,7 @@ function NNECCOAgent:__init(opts)
       basePort     = opts.basePort       or 8080,
       modelPath    = opts.modelPath      or "",
       stubMode     = opts.stubMode,      -- nil = auto-detect
-      verbose      = opts.verbose and false or false,
+      verbose      = opts.verbose or false,
    })
    self.llama:initialize()
 
