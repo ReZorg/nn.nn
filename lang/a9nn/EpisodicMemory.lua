@@ -87,7 +87,7 @@ function EpisodicMemory:sample(n)
                end
             end
             -- If still not added (all items exhausted), break to avoid infinite loop
-            if #chosen == 0 or (#chosen > 0 and not added) then break end
+            if #chosen == 0 or not added then break end
          end
       end
 
