@@ -108,7 +108,12 @@
             [pre_act{t, h, px + ph + b}]'elman
     }
 
-    /* Apply tanh: h_t = tanh(pre_act) */
+    /* Apply tanh: h_t = tanh(pre_act).
+     * NOTE: PLingua rule heads do not support intermediate variable bindings,
+     * so exp(z/1000) is computed twice here.  An optimizer targeting a
+     * PLingua runtime may CSE these sub-expressions automatically; alternatively
+     * split this into two rules: first produce exp_pos{t,h,e} / exp_neg{t,h,e},
+     * then combine them. */
     @rules apply_tanh
     {
         [pre_act{t, h, z}]'elman ->

@@ -17,6 +17,12 @@
  * Two operation modes are supported:
  *   train  -- use batch statistics, update running stats
  *   eval   -- use stored running statistics
+ *
+ * PRECONDITION: Every batch sample must include feature index 1.  Feature 1 acts
+ * as a sentinel that triggers the batch-size counter (batch_size rule).  If any
+ * sample omits feature 1 the batch size will be under-counted, producing incorrect
+ * normalisation statistics.  Callers must guarantee this invariant or adapt the
+ * sentinel strategy to a feature index that is always present.
  */
 
 @model<membrane_computing>
@@ -66,9 +72,7 @@
         [input{f, i, v}]'bn ->
             [counted{f, i, v}]'bn
         [batch_size{n}]'bn -> [batch_size{n + 1}]'bn
-            /* Feature index 1 is used as a sentinel: its presence signals a new sample.
-             * This assumes feature 1 always exists in every batch sample. */
-            where exists input{1}   /* fire once per sample */
+            where exists input{1}   /* fire once per sample; see module precondition */
     }
 
     /* Step 2 – compute batch mean per feature */

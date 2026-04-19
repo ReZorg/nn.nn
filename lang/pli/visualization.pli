@@ -230,16 +230,20 @@
             []'gflow (gradient_flow{t, layer, s / n}, out)
     }
 
-    /* ASCII bar-chart encoding (width proportional to log magnitude)
-     * The magic string "||||||||||" has MAX_BAR_LEN=10 '|' characters.
-     * log(mean_g + 1) * 2 maps gradient magnitudes to 0-10 bar length.
+    /* ASCII bar-chart encoding (width proportional to log magnitude).
+     * MAX_BAR_LEN=10: the bar string contains exactly 10 '|' characters and
+     * the slice upper-bound is clamped to the same value so they stay in sync.
+     * log(mean_g + 1) * 2 maps gradient magnitudes to a 0-10 bar width.
      */
+    @define MAX_BAR_LEN = 10
+    @define BAR_CHARS   = "||||||||||"   /* length must equal MAX_BAR_LEN */
+
     @rules encode_bar
     {
         [gradient_flow_bar{t, layer, mean_g}]'gflow ->
             []'gflow (bar_chart{t, layer,
-                                /* repeat("|", n) equivalent via string slice */
-                                "||||||||||"[0 : min(10, floor(log(mean_g + 1) * 2))]},
+                                BAR_CHARS[0 : min(MAX_BAR_LEN,
+                                                  floor(log(mean_g + 1) * 2))]},
                       out)
     }
 

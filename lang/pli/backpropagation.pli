@@ -394,7 +394,7 @@
     {
         [unscaled_grad{j, g}]'scaler ->
             [found_inf{1}]'scaler
-            where g == inf or g != g   /* g != g detects NaN via IEEE 754 */
+            where g == inf or g != g
         [unscaled_grad{j, g}]'scaler ->
             [safe_grad{j, g}]'scaler
             where g != inf and g == g
