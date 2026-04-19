@@ -560,6 +560,29 @@ Potential extensions:
 
 This implementation follows the license of the parent nn.nn repository.
 
+## Extensions (v2.0)
+
+The following modules extend the core implementation with advanced features:
+
+| Module | Description |
+|--------|-------------|
+| `momentum_adam_rmsprop.pli` | SGD+Momentum, AdaGrad, RMSprop, Adam, AdamW, LR schedulers |
+| `batch_normalization.pli` | Batch Normalization + Layer Normalization (train/eval modes) |
+| `dropout.pli` | Standard, Spatial 2D, Alpha, and DropConnect dropout |
+| `convolutional.pli` | Conv2D, DepthwiseSep, TransposedConv, MaxPool, AvgPool, GAP |
+| `recurrent.pli` | Elman RNN, LSTM, GRU, Bidirectional, Stacked, Seq2Seq |
+| `backpropagation.pli` | Grad clipping, accumulation, Newton, natural grad, TBPTT, GCP |
+| `visualization.pli` | Topology snapshots, heatmaps, gradient flow, training curves |
+| `integration.pli` | Module registry, data ingestion, export bridges, benchmarks |
+
+### Highlights
+
+- **Adam optimizer** uses timestep objects for bias correction, mapping directly to P-Systems state.
+- **LSTM** encodes gate states (`gate_f`, `gate_i`, `gate_g`, `gate_o`) as objects evolving through time-indexed membranes.
+- **Conv2D** uses 2D membrane regions with `input{channel, row, col, value}` objects for spatial data.
+- **Gradient checkpointing** recomputes activations from saved membrane snapshots during backward pass.
+- **Visualization dashboard** wires all monitoring modules together via membrane communication.
+
 ## Contributing
 
 Contributions are welcome! Areas of interest:
