@@ -66,6 +66,8 @@
         [input{f, i, v}]'bn ->
             [counted{f, i, v}]'bn
         [batch_size{n}]'bn -> [batch_size{n + 1}]'bn
+            /* Feature index 1 is used as a sentinel: its presence signals a new sample.
+             * This assumes feature 1 always exists in every batch sample. */
             where exists input{1}   /* fire once per sample */
     }
 

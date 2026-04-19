@@ -513,6 +513,7 @@
         [seq2seq
             [encoder lstm(input_size, hidden_size, src_len)]'seq2seq
             [decoder lstm(output_size, hidden_size, tgt_len)]'seq2seq
+            /* linear_layer is provided by @import "nn.pli" */
             [output_proj linear_layer(hidden_size, output_size)]'seq2seq
             [out_act softmax]'seq2seq
         ]'main

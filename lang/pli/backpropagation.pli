@@ -388,11 +388,13 @@
     }
 
     /* Check for inf/nan in gradients */
+    /* Note: g != g is the IEEE 754 NaN self-comparison idiom (NaN != NaN is true).
+     * If PLingua provides isnan(g), prefer that over this pattern. */
     @rules check_inf
     {
         [unscaled_grad{j, g}]'scaler ->
             [found_inf{1}]'scaler
-            where g == inf or g != g   /* nan check */
+            where g == inf or g != g   /* g != g detects NaN via IEEE 754 */
         [unscaled_grad{j, g}]'scaler ->
             [safe_grad{j, g}]'scaler
             where g != inf and g == g

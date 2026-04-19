@@ -113,15 +113,15 @@
     {
         [grad_out{oc, r_out, c_out, g},
          input{ic, r_in, c_in, v},
-         stride{s}, padding{pad}]'conv ->
+         stride{s}, padding{pad_val}]'conv ->   /* pad_val avoids shadowing the param */
             [grad_kernel{oc, ic,
-                         r_in - r_out * s + padding - 1,
-                         c_in - c_out * s + padding - 1,
+                         r_in - r_out * s + pad_val - 1,
+                         c_in - c_out * s + pad_val - 1,
                          g * v}]'conv
-            where r_in - r_out * s + padding - 1 >= 1
-              and c_in - c_out * s + padding - 1 >= 1
-              and r_in - r_out * s + padding - 1 <= kernel_h
-              and c_in - c_out * s + padding - 1 <= kernel_w
+            where r_in - r_out * s + pad_val - 1 >= 1
+              and c_in - c_out * s + pad_val - 1 >= 1
+              and r_in - r_out * s + pad_val - 1 <= kernel_h
+              and c_in - c_out * s + pad_val - 1 <= kernel_w
     }
 
     /* Sum kernel gradients */

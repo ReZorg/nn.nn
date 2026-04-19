@@ -230,11 +230,15 @@
             []'gflow (gradient_flow{t, layer, s / n}, out)
     }
 
-    /* ASCII bar-chart encoding (width proportional to log magnitude) */
+    /* ASCII bar-chart encoding (width proportional to log magnitude)
+     * The magic string "||||||||||" has MAX_BAR_LEN=10 '|' characters.
+     * log(mean_g + 1) * 2 maps gradient magnitudes to 0-10 bar length.
+     */
     @rules encode_bar
     {
         [gradient_flow_bar{t, layer, mean_g}]'gflow ->
             []'gflow (bar_chart{t, layer,
+                                /* repeat("|", n) equivalent via string slice */
                                 "||||||||||"[0 : min(10, floor(log(mean_g + 1) * 2))]},
                       out)
     }
@@ -304,7 +308,7 @@
     /* Epoch boundary */
     @rules epoch_boundary
     {
-        [epoch_end{}]'tclog ->
+        [epoch_end{}, epoch{e}]'tclog ->
             [epoch{e + 1}, batch{0}]'tclog
     }
 }
@@ -373,15 +377,15 @@
     /* Membrane created */
     @rules on_create
     {
-        [membrane_created{id, parent}]'mlmon ->
-            []'mlmon (lifecycle{step, create, id, parent}, out)
+        [membrane_created{id, parent}, step{s}]'mlmon ->
+            [step{s}]'mlmon (lifecycle{s, create, id, parent}, out)
     }
 
     /* Membrane dissolved */
     @rules on_dissolve
     {
-        [membrane_dissolved{id}]'mlmon ->
-            []'mlmon (lifecycle{step, dissolve, id, none}, out)
+        [membrane_dissolved{id}, step{s}]'mlmon ->
+            [step{s}]'mlmon (lifecycle{s, dissolve, id, none}, out)
     }
 
     @rules advance_step

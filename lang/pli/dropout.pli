@@ -208,11 +208,11 @@
 
     @rules apply_alpha_dropout
     {
-        /* Keep: replace with alpha_prime (scaled) */
+        /* Drop: replace with alpha_prime (mask=0 means the unit is zeroed/replaced) */
         [input{i, v}, mask{i, 0}, alpha_prime{ap}]'alpha_drop ->
             [pre_affine{i, ap}]'alpha_drop
 
-        /* Drop: keep value */
+        /* Keep: preserve original value (mask=1 means the unit is kept) */
         [input{i, v}, mask{i, 1}]'alpha_drop ->
             [pre_affine{i, v}]'alpha_drop
     }
