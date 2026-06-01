@@ -286,7 +286,7 @@
             where e mod s == 0 and e > 0
         [epoch{e}, step{s}]'scheduler ->
             [epoch{e + 1}, step{s}]'scheduler
-            where e mod s != 0
+            where e mod s != 0 or e == 0
     }
 }
 

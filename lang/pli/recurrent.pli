@@ -171,6 +171,12 @@
     {
         [grad_h_from_out{t, h, go}, grad_h_from_rec{t, h, gr}]'elman ->
             [grad_h{t, h, go + gr}]'elman
+        [grad_h_from_out{t, h, go}]'elman ->
+            [grad_h{t, h, go}]'elman
+            where not_exists grad_h_from_rec{t, h}
+        [grad_h_from_rec{t, h, gr}]'elman ->
+            [grad_h{t, h, gr}]'elman
+            where not_exists grad_h_from_out{t, h}
     }
 
     /* Gradient w.r.t. W_x */

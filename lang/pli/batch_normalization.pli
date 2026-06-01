@@ -79,9 +79,9 @@
     @rules compute_mean
     {
         [counted{f, i, v}, batch_mean{f, s}]'bn ->
-            [batch_mean{f, s + v}]'bn
+            [batch_mean{f, s + v}, counted{f, i, v}]'bn
         [counted{f, i, v}]'bn ->
-            [batch_mean{f, v}]'bn
+            [batch_mean{f, v}, counted{f, i, v}]'bn
             where not_exists batch_mean{f}
     }
 
@@ -265,9 +265,9 @@
     @rules compute_mean
     {
         [input{f, i, v}, feature_sum{i, s}]'ln ->
-            [feature_sum{i, s + v}]'ln
+            [feature_sum{i, s + v}, input{f, i, v}]'ln
         [input{f, i, v}]'ln ->
-            [feature_sum{i, v}]'ln
+            [feature_sum{i, v}, input{f, i, v}]'ln
             where not_exists feature_sum{i}
     }
 
