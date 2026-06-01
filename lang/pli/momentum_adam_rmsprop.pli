@@ -250,13 +250,13 @@
 
     @rules weight_decay_update
     {
-        [weight{j, w}, lambda{wd}, lr{l}]'opt_adamw ->
-            [weight{j, w - l * wd * w}]'opt_adamw
+        [weight{j, w}, lambda{wd}, lr{l}]'opt_adam ->
+            [weight{j, w - l * wd * w}]'opt_adam
     }
 
     @initial
     {
-        [opt_adamw
+        [opt_adam
             lambda{weight_decay}
         ]'main
     }
