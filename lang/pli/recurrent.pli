@@ -407,8 +407,8 @@
      * Simplified: re-use pre_gate_b{n} but scale hidden part by r_t */
     @rules activate_n
     {
-        [pre_gate_b{n, t, h, z}]'gru_cell ->
-            [gate_n{t, h, (exp(z/1000) - exp(-z/1000)) * 1000 /
+        [pre_gate_b{n, t, h, z}, gate_r{t, h, rv}]'gru_cell ->
+            [gate_n{t, h, rv * (exp(z/1000) - exp(-z/1000)) * 10 /
                           (exp(z/1000) + exp(-z/1000))}]'gru_cell
     }
 

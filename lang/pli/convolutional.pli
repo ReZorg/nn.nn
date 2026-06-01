@@ -330,7 +330,12 @@
     {
         [window_val{c, r_out, c_out, r1, c1, v1},
          window_val{c, r_out, c_out, r2, c2, v2}]'max_pool ->
-            [window_val{c, r_out, c_out, r1, c1, max(v1, v2)}]'max_pool
+            [window_val{c, r_out, c_out, r1, c1, v1}]'max_pool
+            where v1 >= v2
+        [window_val{c, r_out, c_out, r1, c1, v1},
+         window_val{c, r_out, c_out, r2, c2, v2}]'max_pool ->
+            [window_val{c, r_out, c_out, r2, c2, v2}]'max_pool
+            where v2 > v1
     }
 
     /* Emit output and record argmax for backward */

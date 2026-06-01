@@ -113,6 +113,7 @@
             where not_exists accumulated{j}
         [current_step{s}]'grad_acc ->
             [current_step{s + 1}]'grad_acc
+            where exists new_grad
     }
 
     /* When accumulation_steps reached: normalise and release */
@@ -168,8 +169,8 @@
     /* Estimate diagonal Hessian: H_ii = (g_t - g_{t-1}) / (w_t - w_{t-1}) */
     @rules estimate_hessian
     {
-        [grad{j, g}, prev_grad{j, pg}, weight{j, w}, prev_weight{j, pw}]'diag_newton ->
-            [hessian_diag{j, abs((g - pg) / (w - pw + 1))}]'diag_newton
+        [grad{j, g}, prev_grad{j, pg}, weight{j, w}, prev_weight{j, pw}, eps{e}]'diag_newton ->
+            [hessian_diag{j, abs(g - pg) / (abs(w - pw) + e)}]'diag_newton
             where abs(w - pw) > 0
         [grad{j, g}, prev_grad{j, pg}]'diag_newton ->
             [hessian_diag{j, 1}]'diag_newton
