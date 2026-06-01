@@ -315,7 +315,7 @@
     @rules compute_hidden
     {
         [gate_o{t, h, ov}, cell{t, h, cv}]'lstm_cell ->
-            [hidden{t, h, ov * (exp(cv/1000) - exp(-cv/1000)) /
+            [hidden{t, h, ov * (exp(cv/1000) - exp(-cv/1000)) * 10 /
                             (exp(cv/1000) + exp(-cv/1000))}]'lstm_cell
     }
 
