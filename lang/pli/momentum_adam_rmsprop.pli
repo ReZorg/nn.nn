@@ -306,7 +306,7 @@
     @rules update_lr
     {
         [t{tick}, lr_max{lmax}, lr_min{lmin}, T_max{T}]'scheduler ->
-            [lr{lmin + (lmax - lmin) * (1 + cos(3141592 * tick / T)) / 2},
+            [lr{lmin + (lmax - lmin) * (1 + cos(3141592 * tick / (T * 1000000))) / 2},
              t{tick + 1}]'scheduler
     }
 }
