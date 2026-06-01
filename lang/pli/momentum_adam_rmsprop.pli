@@ -282,7 +282,7 @@
     @rules update_lr
     {
         [epoch{e}, step{s}, lr{l}, decay{d}]'scheduler ->
-            [lr{l * d}, epoch{e + 1}, step{s}, decay{d}]'scheduler
+            [lr{l * d / 100}, epoch{e + 1}, step{s}, decay{d}]'scheduler
             where e mod s == 0 and e > 0
         [epoch{e}, step{s}]'scheduler ->
             [epoch{e + 1}, step{s}]'scheduler

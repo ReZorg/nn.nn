@@ -373,7 +373,7 @@
         ]'main
     }
 
-    /* Build [h_{t-1}, x_t] */
+    /* Build [h_{t-1}, x_t] for z/r gates */
     @rules build_xh
     {
         [input{t, j, v}]'gru_cell ->
@@ -383,15 +383,18 @@
             where t_prev == t - 1
     }
 
-    /* Gate pre-activations */
-    @rules gate_pre_act
+    /* Gate pre-activations for z and r gates (use unmodified xh) */
+    @rules gate_pre_act_zr
     {
         [xh{t, j, v}, W{gate, h, j, w}]'gru_cell ->
             [pre_gate{gate, t, h, v * w}]'gru_cell
+            where gate != n
         [pre_gate{gate, t, h, s1}, pre_gate{gate, t, h, s2}]'gru_cell ->
             [pre_gate{gate, t, h, s1 + s2}]'gru_cell
+            where gate != n
         [pre_gate{gate, t, h, s}, b{gate, h, bv}]'gru_cell ->
             [pre_gate_b{gate, t, h, s + bv}]'gru_cell
+            where gate != n
     }
 
     /* Update and reset gates: sigmoid */
@@ -403,12 +406,32 @@
             [gate_r{t, h, 100 / (1 + exp(-r_pre / 1000))}]'gru_cell
     }
 
-    /* Candidate: tanh(W_n * [r * h_{t-1}, x_t] + b_n)
-     * Simplified: re-use pre_gate_b{n} but scale hidden part by r_t */
+    /* Build reset-gated [r_t * h_{t-1}, x_t] for candidate gate */
+    @rules build_xh_n
+    {
+        [input{t, j, v}]'gru_cell ->
+            [xh_n{t, j, v}]'gru_cell
+        [hidden{t_prev, h, hv}, gate_r{t, h, rv}, timestep{t}]'gru_cell ->
+            [xh_n{t, input_size + h, rv * hv / 100}]'gru_cell
+            where t_prev == t - 1
+    }
+
+    /* Candidate gate pre-activation using reset-gated hidden state */
+    @rules gate_pre_act_n
+    {
+        [xh_n{t, j, v}, W{n, h, j, w}]'gru_cell ->
+            [pre_gate_n{t, h, v * w}]'gru_cell
+        [pre_gate_n{t, h, s1}, pre_gate_n{t, h, s2}]'gru_cell ->
+            [pre_gate_n{t, h, s1 + s2}]'gru_cell
+        [pre_gate_n{t, h, s}, b{n, h, bv}]'gru_cell ->
+            [pre_gate_n_b{t, h, s + bv}]'gru_cell
+    }
+
+    /* Candidate: n_t = tanh(W_n * [r_t * h_{t-1}, x_t] + b_n) */
     @rules activate_n
     {
-        [pre_gate_b{n, t, h, z}, gate_r{t, h, rv}]'gru_cell ->
-            [gate_n{t, h, rv * (exp(z/1000) - exp(-z/1000)) * 10 /
+        [pre_gate_n_b{t, h, z}]'gru_cell ->
+            [gate_n{t, h, (exp(z/1000) - exp(-z/1000)) * 1000 /
                           (exp(z/1000) + exp(-z/1000))}]'gru_cell
     }
 

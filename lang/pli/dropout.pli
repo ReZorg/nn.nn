@@ -263,7 +263,7 @@
     @rules mask_weights_train
     {
         [weight{i, j, w}, drop_prob{dp}, mode{train}]'dropconnect_layer ->
-            [weight_masked{i, j, w * (random(0, 100) >= dp ? 1 : 0)}]'dropconnect_layer
+            [weight_masked{i, j, w * (random(0, 100) >= dp ? 1 : 0) * 100 / (100 - dp)}]'dropconnect_layer
     }
 
     /* Use masked weights for forward computation */
