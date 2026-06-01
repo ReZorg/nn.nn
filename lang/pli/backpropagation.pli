@@ -434,11 +434,12 @@
     /* Collect gradient statistics per layer */
     @rules collect_stats
     {
-        [grad{layer, j, g}, grad_sum{layer, s}, grad_count{layer, n}]'grad_monitor ->
+        [grad{layer, j, g}, grad_sum{layer, s}, grad_count{layer, n},
+         grad_sq_sum{layer, sq}, grad_max{layer, mx}]'grad_monitor ->
             [grad_sum{layer, s + g},
-             grad_sq_sum{layer, g * g},
+             grad_sq_sum{layer, sq + g * g},
              grad_count{layer, n + 1},
-             grad_max{layer, max(g, 0)}]'grad_monitor
+             grad_max{layer, max(abs(g), mx)}]'grad_monitor
         [grad{layer, j, g}]'grad_monitor ->
             [grad_sum{layer, g}, grad_sq_sum{layer, g * g},
              grad_count{layer, 1}, grad_max{layer, abs(g)}]'grad_monitor
