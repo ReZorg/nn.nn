@@ -83,7 +83,6 @@
         [counted{f, i, v}]'bn ->
             [batch_mean{f, v}, counted{f, i, v}]'bn
             where not_exists batch_mean{f}
-    }
 
     /* Step 3 – finalise mean (divide by batch size) */
     @rules finalise_mean
