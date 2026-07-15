@@ -144,6 +144,60 @@ SECTION 1: FORWARD PROPAGATION OPERATIONS
 └─────────────────────────────────────────────────────────────────────────────┘
   Forward pass through Sequential container: chains outputs to inputs.
 
+┌─ ConvNdForward[Rank : ℕ₁] ──────────────────────────────────────────────────┐
+│ ModuleForward                                                               │
+│                                                                             │
+│ let m == topology.registry.modules(moduleId?) in                           │
+│     m.moduleType = ConvolutionalLayer                                       │
+│     -- input?: inChannels tensors of rank Rank with common shape inShape   │
+│     ∧ #input?.shape = Rank + 1 ∧ input?.shape(1) = m.inChannels           │
+│     ∧ let inShape == tail input?.shape in                                   │
+│       let outShape == (λ i : 1..Rank •                                      │
+│               ⌊(inShape(i) + 2·m.padding(i)                                │
+│                 − m.dilation(i)·(m.kernelShape(i) − 1) − 1)               │
+│                / m.stride(i)⌋ + 1) in                                       │
+│         -- Lowering: unfold (im2col) → matrix multiply → fold              │
+│         ∃ columns : Matrix |                                                │
+│             columns.rows = m.inChannels × Π m.kernelShape                  │
+│             ∧ columns.cols = Π outShape                                     │
+│             -- column c gathers the (zero-padded) input window at output   │
+│             -- coordinate c: in(i) = out(i)·s(i) − p(i) + k(i)·d(i)        │
+│             ∧ output!.shape = ⟨m.outChannels⟩ ⌢ outShape                   │
+│             ∧ flatten(output!) = m.weight ×ₘ columns +ᵦ m.bias             │
+└─────────────────────────────────────────────────────────────────────────────┘
+  Rank-parametric convolution forward: one schema for all ranks, replacing
+  per-rank Temporal/Spatial/Volumetric forward schemas. The same GEMM kernel
+  serves 1D, 2D, 3D, 4D, 5D and beyond; only the unfold is rank-recursive.
+  Reference implementation: lang/pl/nn_nd.pl (convnd_forward/3).
+
+┌─ PoolNdForward[Rank : ℕ₁] ──────────────────────────────────────────────────┐
+│ ModuleForward                                                               │
+│                                                                             │
+│ let m == topology.registry.modules(moduleId?) in                           │
+│     -- Same output shape law as ConvNdForward with dilation = 1            │
+│     -- Each output element reduces its input window with m.mode:           │
+│     m.mode = max ⇒ out(c) = max{window(c)}                                 │
+│     ∧ m.mode = avg ⇒ out(c) = (Σ window(c)) / #window(c)                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+  Rank-parametric pooling forward: reduction over an arbitrary window of
+  dimensions. Reference implementation: lang/pl/nn_nd.pl (poolnd_forward/3).
+
+┌─ FractalForward ────────────────────────────────────────────────────────────┐
+│ ModuleForward                                                               │
+│ mask? : seq {0, 1}                                                          │
+│                                                                             │
+│ let m == topology.registry.modules(moduleId?) in                           │
+│     -- concat_avg join: average outputs of active branches                 │
+│     #mask? = #m.branches ∧ (∃ i • mask?(i) = 1)                            │
+│     ∧ let active == {i : 1..#m.branches | mask?(i) = 1} in                 │
+│         output! = (Σ i : active • branchOutput(i)) / #active               │
+│     -- Deterministic evaluation sets mask? = ⟨1, 1, ..., 1⟩;               │
+│     -- drop-path training samples mask? per step (≥ 1 branch active)       │
+└─────────────────────────────────────────────────────────────────────────────┘
+  Forward pass through a fractal concat_avg join with optional drop-path
+  branch masking. Reference: lang/pl/nn_nd.pl (concat_avg_forward/3,
+  drop_path_forward/4).
+
 ┌─ CompleteForward ───────────────────────────────────────────────────────────┐
 │ ΔSystemState                                                                │
 │ input? : Tensor                                                             │

@@ -35,6 +35,13 @@ A comprehensive, pure Prolog implementation of neural networks with a modular ar
   - `Mean`: Mean reduction along a dimension
   - `Max`: Max reduction along a dimension
 
+### Rank-Parametric nD and Fractal Modules (`nn_nd.pl`)
+- **`convnd`**: One rank-generic convolution replacing the Temporal/Spatial/Volumetric triplet — 1D, 2D, 3D, 4D, 5D+ with a single mechanism (unfold → matrix multiply → fold), with stride, zero padding, and dilation
+- **`separable_convnd`**: Factorized convolution (k^R kernel → R axis-aligned 1D passes) for high ranks
+- **`poolnd`**: Rank-generic max/average pooling (reduction over arbitrary window of dims)
+- **`fractal_module`**: FractalNet-style self-similar container recursion with `concat_avg` join and drop-path regularization
+- **Graph lowering path**: `graph_conv` message passing, `grid_graph` (nD lattice as graph), `sierpinski_graph` (fractal data domains), `fractal_pool` (renormalization pooling)
+
 ### Traditional Interface
 - **Vector/Matrix operations** - Dot products, matrix multiplication, etc.
 - **Loss functions** - Mean Squared Error (MSE)
@@ -319,6 +326,47 @@ Creates a Max reduction module.
    nn:criterion_forward(NLL, LogProbs, Target, Loss).
 ```
 
+### Rank-Parametric nD Convolution and Fractal Networks
+
+Dimension is a parameter, not a class. `nn_nd.pl` provides a single `convnd`
+abstraction whose rank selects behavior, obeying the output shape law
+`out_i = ⌊(in_i + 2p_i − d_i·(k_i − 1) − 1) / s_i⌋ + 1` for all ranks:
+
+```prolog
+?- consult('nn_nd.pl').
+
+% 2D convolution: 1 input channel, 4 output channels, 3x3 kernel
+?- nn_nd:convnd_module(2, 1, 4, [3,3], Conv2D).
+
+% The same constructor at rank 4 (spatiotemporal) — no new code
+?- nn_nd:convnd_module(4, 1, 4, [2,2,2,2], Conv4D).
+
+% Rank-generic pooling and forward pass
+?- nn_nd:convnd_module(2, 1, 1, [2,2], Conv),
+   nn_nd:poolnd_module(2, [2,2], max, Pool),
+   Net = sequential([Conv, Pool]),
+   nn_nd:nd_module_forward(Net, [[[1,2,3],[4,5,6],[7,8,9]]], Out).
+
+% High ranks: separable factorization, O(R·k) instead of O(k^R) parameters
+?- nn_nd:separable_convnd_module(3, 8, [3,3,3], SepConv3D).
+
+% Fractal topology: f_k = join(f_{k-1} ∘ f_{k-1}, base), depth 2^(k-1)
+?- nn_nd:convnd_module(2, 1, 1, [3,3], Base),
+   nn_nd:fractal_module(3, Base, Fractal).
+
+% Drop-path regularization: stochastic branch mask over concat_avg
+?- nn_nd:fractal_module(2, identity, concat_avg(Branches)),
+   nn_nd:random_drop_path_mask(2, 0.7, Mask),
+   nn_nd:drop_path_forward(concat_avg(Branches), Mask, [1.0, 2.0], Out).
+
+% Fractal data domains: lower to a graph and use message passing
+?- nn_nd:sierpinski_graph(3, Graph, Vertices),
+   nn_nd:graph_conv_module(4, 8, GConv).
+
+% nD grids are just graphs with regular structure
+?- nn_nd:grid_graph([4,4,4], Graph).
+```
+
 ### XOR Problem
 
 The XOR problem is a classic test for neural networks:
@@ -375,6 +423,12 @@ Run the module-based interface tests:
 ```bash
 cd lang/pl
 swipl -q -l test_modules.pl -g run_module_tests -t halt
+```
+
+Run the nD / fractal module tests:
+
+```bash
+swipl -q -l test_nd.pl -g run_nd_tests -t halt
 ```
 
 Or within the Prolog REPL:
