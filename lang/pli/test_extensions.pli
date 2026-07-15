@@ -1,0 +1,735 @@
+/*
+ * Extended Test Suite for the PLingua Neural Network Library
+ * Covers the v2.x extension modules and the new v2.1 modules:
+ *   optimizers, batch/layer norm, dropout, convolutional, recurrent,
+ *   gradient utilities, new activations, new criteria, containers,
+ *   layers, attention, SN P systems, and exporter round-trip.
+ *
+ * Uses the same test_framework as test_nn.pli.
+ */
+
+@model<testing>
+
+@import "nn.pli"
+@import "activations.pli"
+@import "criteria.pli"
+@import "containers.pli"
+@import "layers.pli"
+@import "attention.pli"
+@import "snp.pli"
+@import "momentum_adam_rmsprop.pli"
+@import "batch_normalization.pli"
+@import "dropout.pli"
+@import "convolutional.pli"
+@import "recurrent.pli"
+@import "backpropagation.pli"
+@import "integration.pli"
+@import "test_nn.pli"   /* reuse test_framework */
+
+/* ============================================================================
+ * OPTIMIZER TESTS
+ * ============================================================================ */
+
+@test sgd_momentum_test
+{
+    @description "SGD with momentum: velocity update v = beta*v + g; w -= lr*v"
+
+    @setup
+    {
+        [test_momentum
+            weight{1, 100}
+            velocity{1, 20}
+            grad{1, 10}
+            beta{90}          /* 0.9 */
+            learning_rate{10} /* 0.1 */
+        ]'main
+    }
+
+    @rules
+    {
+        /* v = 0.9*20 + 10 = 28 */
+        [velocity{1, 20}, grad{1, 10}, beta{90}]'test ->
+            [velocity{1, 28}]'test
+
+        assert_equal("momentum_velocity", 28, velocity{1})
+
+        /* w = 100 - 0.1*28 ~ 97 */
+        [weight{1, 100}, velocity{1, 28}, learning_rate{10}]'test ->
+            [weight{1, 97}]'test
+
+        assert_equal("momentum_weight_update", 97, weight{1})
+    }
+}
+
+@test adam_test
+{
+    @description "Adam: bias-corrected first/second moment update"
+
+    @setup
+    {
+        [test_adam
+            m{1, 0}
+            v{1, 0}
+            grad{1, 100}
+            timestep{1}
+            beta1{90}   /* 0.9 */
+            beta2{99}   /* 0.999 approximated as 0.99 */
+        ]'main
+    }
+
+    @rules
+    {
+        /* m = 0.9*0 + 0.1*100 = 10 */
+        [m{1, 0}, grad{1, 100}, beta1{90}]'test ->
+            [m{1, 10}]'test
+
+        assert_equal("adam_first_moment", 10, m{1})
+
+        /* v = 0.99*0 + 0.01*100^2/100 = 100 */
+        [v{1, 0}, grad{1, 100}, beta2{99}]'test ->
+            [v{1, 100}]'test
+
+        assert_equal("adam_second_moment", 100, v{1})
+
+        /* Bias correction at t=1: m_hat = m / (1 - 0.9) = 100 */
+        [m{1, 10}, timestep{1}, beta1{90}]'test ->
+            [m_hat{1, 100}]'test
+
+        assert_equal("adam_bias_correction", 100, m_hat{1})
+    }
+}
+
+/* ============================================================================
+ * NORMALIZATION TESTS
+ * ============================================================================ */
+
+@test batch_norm_test
+{
+    @description "Batch norm: zero-mean/unit-variance in train mode"
+
+    @setup
+    {
+        [test_bn
+            /* Batch of 2 values for feature 1: 40 and 60; mean = 50 */
+            batch_value{1, 1, 40}
+            batch_value{2, 1, 60}
+            mode{train}
+        ]'main
+    }
+
+    @rules
+    {
+        /* mean = (40 + 60) / 2 = 50 */
+        [batch_value{1, 1, 40}, batch_value{2, 1, 60}]'test ->
+            [batch_mean{1, 50}]'test
+
+        assert_equal("bn_batch_mean", 50, batch_mean{1})
+
+        /* variance = ((40-50)^2 + (60-50)^2)/2 = 100 */
+        [batch_mean{1, 50}]'test ->
+            [batch_var{1, 100}]'test
+
+        assert_equal("bn_batch_variance", 100, batch_var{1})
+    }
+}
+
+/* ============================================================================
+ * DROPOUT TESTS
+ * ============================================================================ */
+
+@test dropout_mask_test
+{
+    @description "Dropout: eval mode is identity; dropped units emit zero"
+
+    @setup
+    {
+        [test_dropout
+            input{1, 80}
+            input{2, 60}
+            mask{1, 1}    /* kept */
+            mask{2, 0}    /* dropped */
+            mode{train}
+        ]'main
+    }
+
+    @rules
+    {
+        /* Kept unit passes (with inverted scaling p=0.5: 80*2 = 160) */
+        [input{1, 80}, mask{1, 1}]'test ->
+            [output{1, 160}]'test
+
+        assert_equal("dropout_kept_scaled", 160, output{1})
+
+        /* Dropped unit outputs zero */
+        [input{2, 60}, mask{2, 0}]'test ->
+            [output{2, 0}]'test
+
+        assert_equal("dropout_dropped", 0, output{2})
+
+        /* Eval mode: pass-through unchanged */
+        [input{1, 80}, mode{eval}]'test ->
+            [output{1, 80}]'test
+
+        assert_equal("dropout_eval_identity", 80, output{1})
+    }
+}
+
+/* ============================================================================
+ * CONVOLUTIONAL TESTS
+ * ============================================================================ */
+
+@test conv2d_shape_test
+{
+    @description "Conv2D output shape: out = (in + 2*pad - kernel)/stride + 1"
+
+    @setup
+    {
+        [test_conv
+            input_size{28}
+            kernel{5}
+            stride{1}
+            padding{0}
+        ]'main
+    }
+
+    @rules
+    {
+        /* (28 + 0 - 5)/1 + 1 = 24 */
+        [input_size{28}, kernel{5}, stride{1}, padding{0}]'test ->
+            [output_size{24}]'test
+
+        assert_equal("conv2d_output_size", 24, output_size)
+    }
+}
+
+@test max_pool_test
+{
+    @description "MaxPool 2x2: selects max of window"
+
+    @setup
+    {
+        [test_pool
+            input{1, 1, 1, 10}
+            input{1, 1, 2, 40}
+            input{1, 2, 1, 20}
+            input{1, 2, 2, 30}
+        ]'main
+    }
+
+    @rules
+    {
+        /* max(10, 40, 20, 30) = 40 */
+        [input{1, 1, 1, 10}, input{1, 1, 2, 40},
+         input{1, 2, 1, 20}, input{1, 2, 2, 30}]'test ->
+            [pooled{1, 1, 1, 40}]'test
+
+        assert_equal("max_pool_value", 40, pooled{1, 1, 1})
+    }
+}
+
+/* ============================================================================
+ * RECURRENT TESTS
+ * ============================================================================ */
+
+@test lstm_gate_test
+{
+    @description "LSTM gates: cell state update c = f*c_prev + i*g"
+
+    @setup
+    {
+        [test_lstm
+            gate_f{1, 50}   /* forget gate 0.5 */
+            gate_i{1, 100}  /* input gate 1.0 */
+            gate_g{1, 40}   /* candidate 0.4 */
+            cell_prev{1, 80}
+        ]'main
+    }
+
+    @rules
+    {
+        /* c = 0.5*80 + 1.0*40 = 40 + 40 = 80 */
+        [gate_f{1, 50}, gate_i{1, 100}, gate_g{1, 40}, cell_prev{1, 80}]'test ->
+            [cell{1, 80}]'test
+
+        assert_equal("lstm_cell_update", 80, cell{1})
+    }
+}
+
+/* ============================================================================
+ * GRADIENT UTILITY TESTS
+ * ============================================================================ */
+
+@test gradient_clip_test
+{
+    @description "Gradient clipping by value"
+
+    @setup
+    {
+        [test_clip
+            grad{1, 500}
+            grad{2, -300}
+            grad{3, 50}
+            clip{100}
+        ]'main
+    }
+
+    @rules
+    {
+        /* 500 clipped to 100 */
+        [grad{1, 500}, clip{100}]'test -> [clipped{1, 100}]'test
+        assert_equal("clip_positive", 100, clipped{1})
+
+        /* -300 clipped to -100 */
+        [grad{2, -300}, clip{100}]'test -> [clipped{2, -100}]'test
+        assert_equal("clip_negative", -100, clipped{2})
+
+        /* 50 unchanged */
+        [grad{3, 50}, clip{100}]'test -> [clipped{3, 50}]'test
+        assert_equal("clip_within_range", 50, clipped{3})
+    }
+}
+
+/* ============================================================================
+ * NEW ACTIVATION TESTS
+ * ============================================================================ */
+
+@test leaky_relu_test
+{
+    @description "LeakyReLU: identity for positive, slope*x for negative"
+
+    @setup
+    {
+        [test_lrelu
+            input{1, 100}
+            input{2, -100}
+            slope{1}   /* 0.01 */
+        ]'main
+    }
+
+    @rules
+    {
+        [input{1, 100}]'test -> [x{100}]'lrelu
+        assert_equal("leaky_relu_positive", 100, lrelu)
+
+        /* -100 * 0.01 = -1 */
+        [input{2, -100}]'test -> [x{-100}]'lrelu
+        assert_equal("leaky_relu_negative", -1, lrelu)
+    }
+}
+
+@test elu_test
+{
+    @description "ELU: identity for positive, alpha*(exp(x)-1) for negative"
+
+    @setup
+    {
+        [test_elu
+            input{1, 100}
+            input{2, -100}
+            alpha{100}   /* 1.0 */
+        ]'main
+    }
+
+    @rules
+    {
+        [input{1, 100}]'test -> [x{100}]'elu
+        assert_equal("elu_positive", 100, elu_out)
+
+        /* 1.0*(exp(-1)-1) ~ -0.63 -> -63 */
+        [input{2, -100}]'test -> [x{-100}]'elu
+        assert_equal("elu_negative", -63, elu_out)
+    }
+}
+
+@test log_softmax_test
+{
+    @description "LogSoftmax: outputs sum to log-probabilities"
+
+    @setup
+    {
+        [test_lsm
+            logit{1, 100}
+            logit{2, 100}
+        ]'main
+    }
+
+    @rules
+    {
+        /* Equal logits: log(0.5) ~ -0.693 -> -69 for both */
+        [logit{1, 100}, logit{2, 100}]'test ->
+            [log_prob{1, -69}, log_prob{2, -69}]'lsm
+
+        assert_equal("log_softmax_uniform", -69, log_prob{1})
+    }
+}
+
+/* ============================================================================
+ * NEW CRITERIA TESTS
+ * ============================================================================ */
+
+@test bce_test
+{
+    @description "BCE loss: -log(p) when target is 1"
+
+    @setup
+    {
+        [test_bce
+            predicted{1, 80}   /* p = 0.8 */
+            target{1, 100}     /* t = 1 */
+        ]'main
+    }
+
+    @rules
+    {
+        /* -log(0.8) ~ 0.223 -> 22 */
+        [predicted{1, 80}, target{1, 100}]'loss ->
+            [bce{1, 22}]'loss
+
+        assert_equal("bce_loss", 22, bce{1})
+    }
+}
+
+@test cross_entropy_test
+{
+    @description "CrossEntropy gradient: softmax - one_hot"
+
+    @setup
+    {
+        [test_ce
+            logit{1, 100}
+            logit{2, 100}
+            target{1}
+        ]'main
+    }
+
+    @rules
+    {
+        /* Equal logits: softmax = [0.5, 0.5]; grad = [0.5-1, 0.5] = [-50, 50] */
+        [logit{1, 100}, logit{2, 100}, target{1}]'loss ->
+            [gradient{1, -50}, gradient{2, 50}]'loss
+
+        assert_equal("ce_grad_true_class", -50, gradient{1})
+        assert_equal("ce_grad_other_class", 50, gradient{2})
+    }
+}
+
+@test smooth_l1_test
+{
+    @description "SmoothL1: quadratic inside beta, linear outside"
+
+    @setup
+    {
+        [test_huber
+            predicted{1, 150}
+            target{1, 100}
+            beta{100}
+        ]'main
+    }
+
+    @rules
+    {
+        /* |e| = 50 < beta: loss = 50^2/(2*100) = 12.5 -> 12 */
+        [predicted{1, 150}, target{1, 100}]'loss ->
+            [huber{1, 12}]'loss
+
+        assert_equal("smooth_l1_quadratic", 12, huber{1})
+    }
+}
+
+/* ============================================================================
+ * CONTAINER TESTS
+ * ============================================================================ */
+
+@test cadd_table_test
+{
+    @description "CAddTable: element-wise sum of table slots"
+
+    @setup
+    {
+        [test_add
+            table_input{1, 1, 30}
+            table_input{2, 1, 50}
+        ]'main
+    }
+
+    @rules
+    {
+        [table_input{1, 1, 30}, table_input{2, 1, 50}]'add ->
+            [output{1, 80}]'add
+
+        assert_equal("cadd_table_sum", 80, output{1})
+    }
+}
+
+@test identity_test
+{
+    @description "Identity: pass-through in both directions"
+
+    @setup
+    {
+        [test_id
+            input{1, 42}
+        ]'main
+    }
+
+    @rules
+    {
+        [input{1, 42}]'id -> [output{1, 42}]'id
+        assert_equal("identity_forward", 42, output{1})
+    }
+}
+
+@test reshape_test
+{
+    @description "Reshape: (r, c) -> flat index (r-1)*cols + c"
+
+    @setup
+    {
+        [test_reshape
+            input{2, 3, 77}   /* row 2, col 3, value 77 */
+            cols{4}
+        ]'main
+    }
+
+    @rules
+    {
+        /* Flat index = (2-1)*4 + 3 = 7 */
+        [input{2, 3, 77}]'shape -> [output{7, 77}]'shape
+        assert_equal("reshape_flatten", 77, output{7})
+    }
+}
+
+/* ============================================================================
+ * LAYER TESTS
+ * ============================================================================ */
+
+@test lookup_table_test
+{
+    @description "LookupTable: token index selects its embedding row"
+
+    @setup
+    {
+        [test_embed
+            embedding{3, 1, 25}
+            embedding{3, 2, -40}
+            token{1, 3}   /* position 1 looks up row 3 */
+        ]'main
+    }
+
+    @rules
+    {
+        [token{1, 3}, embedding{3, 1, 25}]'embed ->
+            [output{1, 1, 25}]'embed
+        assert_equal("lookup_dim1", 25, output{1, 1})
+
+        [token{1, 3}, embedding{3, 2, -40}]'embed ->
+            [output{1, 2, -40}]'embed
+        assert_equal("lookup_dim2", -40, output{1, 2})
+    }
+}
+
+/* ============================================================================
+ * ATTENTION TESTS
+ * ============================================================================ */
+
+@test attention_score_test
+{
+    @description "Scaled dot-product: score = q.k / sqrt(d_k)"
+
+    @setup
+    {
+        [test_attn
+            q{1, 1, 100}
+            k{1, 1, 100}
+            d_k{1}
+        ]'main
+    }
+
+    @rules
+    {
+        /* q.k = 1.0*1.0 = 1.0 -> 100; /sqrt(1) = 100 */
+        [q{1, 1, 100}, k{1, 1, 100}]'attn ->
+            [score{1, 1, 100}]'attn
+
+        assert_equal("attention_score", 100, score{1, 1})
+    }
+}
+
+/* ============================================================================
+ * SN P SYSTEM TESTS
+ * ============================================================================ */
+
+@test snp_firing_test
+{
+    @description "SN P neuron fires when spikes reach threshold"
+
+    @setup
+    {
+        [test_snp
+            [neuron
+                spike_count{2}
+                refractory{0}
+                threshold{2}
+            ]'test
+        ]'main
+    }
+
+    @rules
+    {
+        /* 2 spikes >= threshold 2: fire, consume spikes */
+        [spike_count{2}, refractory{0}]'neuron ->
+            [spike_count{0}, pending_spike{}]'neuron
+
+        assert_equal("snp_spikes_consumed", 0, spike_count)
+    }
+}
+
+@test snp_subthreshold_test
+{
+    @description "SN P neuron does not fire below threshold"
+
+    @setup
+    {
+        [test_snp2
+            [neuron
+                spike_count{1}
+                refractory{0}
+                threshold{2}
+            ]'test
+        ]'main
+    }
+
+    @rules
+    {
+        /* 1 spike < threshold 2: no firing, count unchanged */
+        assert_equal("snp_no_fire", 1, spike_count)
+    }
+}
+
+/* ============================================================================
+ * EXPORTER ROUND-TRIP TEST
+ * ============================================================================ */
+
+@test exporter_roundtrip_test
+{
+    @description "save_weights then load_weights restores identical weights"
+
+    @setup
+    {
+        [test_export
+            [neuron{1}
+                weight{1, 37}
+                bias{5}
+            ]'test
+            save_request{model_a}
+        ]'main
+    }
+
+    @rules
+    {
+        /* Save produces interchange records */
+        [weight{1, 37}]'neuron{1} ->
+            [weight{1, 37}]'neuron{1} (weight_record{model_a, 1, 1, 37}, out)
+
+        /* Corrupt weight, then load restores it */
+        [weight{1, 37}]'neuron{1} -> [weight{1, 0}]'neuron{1}
+
+        (weight_record{model_a, 1, 1, 37}, in) [weight{1, 0}]'neuron{1} ->
+            [weight{1, 37}]'neuron{1}
+
+        assert_equal("exporter_roundtrip", 37, weight{1})
+    }
+}
+
+/* ============================================================================
+ * TEST RUNNER
+ * ============================================================================ */
+
+@main
+{
+    @description "Run all extension tests and report results"
+
+    test_framework
+
+    /* Optimizers */
+    sgd_momentum_test
+    adam_test
+
+    /* Normalization and regularization */
+    batch_norm_test
+    dropout_mask_test
+
+    /* Convolutional and recurrent */
+    conv2d_shape_test
+    max_pool_test
+    lstm_gate_test
+
+    /* Gradient utilities */
+    gradient_clip_test
+
+    /* New activations */
+    leaky_relu_test
+    elu_test
+    log_softmax_test
+
+    /* New criteria */
+    bce_test
+    cross_entropy_test
+    smooth_l1_test
+
+    /* Containers */
+    cadd_table_test
+    identity_test
+    reshape_test
+
+    /* Layers */
+    lookup_table_test
+
+    /* Attention */
+    attention_score_test
+
+    /* SN P systems */
+    snp_firing_test
+    snp_subthreshold_test
+
+    /* Exporter */
+    exporter_roundtrip_test
+
+    [test_suite
+        total_tests{t}
+        passed_tests{p}
+        failed_tests{f}
+    ]'main ->
+    {
+        []'main (
+            test_results{
+                "Total Tests": t,
+                "Passed": p,
+                "Failed": f,
+                "Success Rate": (p*100)/t + "%"
+            },
+            out
+        )
+    }
+}
+
+/* ============================================================================
+ * EXPECTED RESULTS
+ * ============================================================================ */
+
+@expected_output
+{
+    test_results{
+        "Total Tests": 22,
+        "Passed": 22,
+        "Failed": 0,
+        "Success Rate": "100%"
+    }
+}
+
+/*
+ * USAGE:
+ * Run this test suite with your PLingua simulator:
+ *
+ * $ plingua test_extensions.pli
+ */

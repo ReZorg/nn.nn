@@ -24,10 +24,11 @@ This implementation demonstrates how neural network algorithms can be expressed 
 - **Parallel Processing**: P-Systems natural parallelism models concurrent neural computation
 
 ### Modular Components
-- **Container Modules**: Sequential composition of layers
-- **Transfer Modules**: Sigmoid, Tanh, ReLU, Softmax as reusable modules
-- **Layer Modules**: Linear/Dense fully-connected layers
-- **Criterion Modules**: MSE, NLL, BCE, Absolute Error loss functions
+- **Container Modules**: Sequential, Concat, Parallel, ConcatTable, table ops (CAdd/CSub/CMul/CMax/CMin), Identity, Reshape
+- **Transfer Modules**: Sigmoid, Tanh, ReLU, Softmax, LeakyReLU, PReLU, ELU, SELU, GELU, Softplus, HardTanh, HardSigmoid, LogSigmoid, LogSoftMax
+- **Layer Modules**: Linear/Dense, LookupTable (embedding), Bilinear, SparseLinear
+- **Criterion Modules**: MSE, NLL, BCE, Absolute Error, CrossEntropy, SmoothL1/Huber, Margin, KLDiv, weighted NLL
+- **Initialization**: Xavier/Glorot and He/Kaiming schemes via `linear_layer_init`
 
 ## Installation
 
@@ -343,7 +344,7 @@ train_network(classifier, training_data, 200, 20)
 ## Running Tests
 
 ```bash
-# Run test suite
+# Run core test suite
 plingua test_nn.pli
 
 # Expected output:
@@ -351,9 +352,18 @@ plingua test_nn.pli
 # Passed: 11
 # Failed: 0
 # Success Rate: 100%
+
+# Run extension test suite
+plingua test_extensions.pli
+
+# Expected output:
+# Total Tests: 22
+# Passed: 22
+# Failed: 0
+# Success Rate: 100%
 ```
 
-### Test Coverage
+### Test Coverage (core: test_nn.pli)
 - ✅ Sigmoid activation function
 - ✅ Tanh activation function
 - ✅ ReLU activation function
@@ -365,6 +375,21 @@ plingua test_nn.pli
 - ✅ Sequential composition
 - ✅ Training loop execution
 - ✅ Gradient computation
+
+### Test Coverage (extensions: test_extensions.pli)
+- ✅ SGD with momentum and Adam update rules
+- ✅ Batch normalization statistics (train mode)
+- ✅ Dropout masks and eval-mode identity
+- ✅ Conv2D output shapes and max pooling
+- ✅ LSTM cell-state gate evolution
+- ✅ Gradient clipping by value
+- ✅ LeakyReLU, ELU, LogSoftMax activations
+- ✅ BCE, CrossEntropy, SmoothL1 criteria
+- ✅ CAddTable, Identity, Reshape containers
+- ✅ LookupTable embedding lookup
+- ✅ Scaled dot-product attention scores
+- ✅ SN P neuron firing and sub-threshold behavior
+- ✅ Exporter save/load weight round-trip
 
 ## Running Demos
 
@@ -380,6 +405,11 @@ plingua demo.pli
 # 5. Multi-layer network
 # 6. Training visualization
 # 7. Binary classification
+# 8. Optimizer comparison (SGD vs Adam)
+# 9. LeNet-5 convolutional network
+# 10. LSTM sequence prediction
+# 11. Attention weights
+# 12. Spiking Neural P System XOR
 ```
 
 ## Running Examples
@@ -400,6 +430,25 @@ plingua example.pli --run xor_function
 # 6. custom_architecture
 # 7. incremental_training
 # 8. loss_function_comparison
+# 9. xavier_initialization
+# 10. word_embedding_example
+# 11. lstm_sequence_prediction
+# 12. weighted_loss_example
+# 13. snp_xor_example
+```
+
+## Validating Syntax
+
+Because no PLingua interpreter ships with this repository, a lightweight
+validation script is provided to check the `.pli` sources:
+
+```bash
+# Structural checks (comment/brace/bracket balance) - no dependencies
+./validate.sh
+
+# Full syntax check if the P-Lingua 5 compiler is on your PATH
+# (see https://github.com/RGNC/plingua)
+PLINGUA=plingua ./validate.sh
 ```
 
 ## Key Concepts
@@ -519,25 +568,32 @@ This implementation is ideal for:
 
 ## Limitations
 
-1. **No Convolutional Layers**: Focus on feedforward networks
-2. **No Recurrent Networks**: Time-series require different P-System model
-3. **Limited Optimization**: Basic gradient descent only
-4. **Integer Arithmetic**: Approximate continuous values
-5. **Simplified Backprop**: Full computation graph not implemented
-6. **No GPU**: P-Systems simulators run on CPU
-7. **Small Scale**: Best for educational/proof-of-concept use
+1. **Limited Precision**: Integer arithmetic (×100 scaling; some modules use ×10000) approximates continuous values
+2. **Simplified Backprop**: Full computation graph not implemented
+3. **No GPU**: P-Systems simulators run on CPU
+4. **Small Scale**: Best for educational/proof-of-concept use
+5. **No Interpreter Bundled**: Requires an external P-Lingua simulator to execute
 
 ## Future Enhancements
 
-Potential extensions:
-- [ ] Momentum and adaptive learning rates (Adam, RMSprop)
-- [ ] Batch normalization
-- [ ] Dropout for regularization
-- [ ] Convolutional layers (requires 2D membrane regions)
-- [ ] Recurrent networks (requires temporal P-Systems)
-- [ ] More sophisticated backpropagation
-- [ ] Visualization of membrane evolution
-- [ ] Integration with existing P-Lingua tools
+Completed extensions:
+- [x] Momentum and adaptive learning rates (Adam, RMSprop) — `momentum_adam_rmsprop.pli`
+- [x] Batch normalization — `batch_normalization.pli`
+- [x] Dropout for regularization — `dropout.pli`
+- [x] Convolutional layers (2D membrane regions) — `convolutional.pli`
+- [x] Recurrent networks (temporal P-Systems) — `recurrent.pli`
+- [x] More sophisticated backpropagation — `backpropagation.pli`
+- [x] Visualization of membrane evolution — `visualization.pli`
+- [x] Integration with existing P-Lingua tools — `integration.pli`
+- [x] Extended activations, criteria, containers, layers — `activations.pli`, `criteria.pli`, `containers.pli`, `layers.pli`
+- [x] Attention/transformer modules — `attention.pli`
+- [x] Spiking Neural P Systems — `snp.pli`
+
+Potential further extensions:
+- [ ] Graph neural network modules (membranes as graph nodes)
+- [ ] Neuroevolution via membrane division rules
+- [ ] Probabilistic P-Systems for Bayesian layers
+- [ ] Full transformer decoder with causal masking
 
 ## References
 
@@ -573,7 +629,30 @@ The following modules extend the core implementation with advanced features:
 | `recurrent.pli` | Elman RNN, LSTM, GRU, Bidirectional, Stacked, Seq2Seq |
 | `backpropagation.pli` | Grad clipping, accumulation, Newton, natural grad, TBPTT, GCP |
 | `visualization.pli` | Topology snapshots, heatmaps, gradient flow, training curves |
-| `integration.pli` | Module registry, data ingestion, export bridges, benchmarks |
+| `integration.pli` | Module registry, data ingestion, export bridges, save/load weights, benchmarks |
+
+## Extensions (v2.1)
+
+| Module | Description |
+|--------|-------------|
+| `activations.pli` | LeakyReLU, PReLU, ELU, SELU, GELU, Softplus, HardTanh, HardSigmoid, LogSigmoid, LogSoftMax |
+| `criteria.pli` | CrossEntropy (fused), SmoothL1/Huber, Margin, KLDiv, weighted NLL |
+| `containers.pli` | Concat, Parallel, ConcatTable, CAdd/CSub/CMul/CMax/CMin tables, Identity, Reshape |
+| `layers.pli` | LookupTable (embedding), Bilinear, SparseLinear, Xavier/He initialization |
+| `attention.pli` | Scaled dot-product attention, multi-head attention, transformer encoder block, native batch processing |
+| `snp.pli` | Spiking Neural P Systems: SN P neurons, synapses, spike-train encoding, rate-coded bridge, SN P XOR |
+| `test_extensions.pli` | 22 tests covering all extension and v2.1 modules |
+
+### Weight Interchange Format
+
+`integration.pli` exposes `save_weights` / `load_weights` rules that round-trip
+trained models via a simple record format shared conceptually with the other
+language ports (`lang/pl`, `lang/rkt`, `lang/scm`):
+
+```plingua
+weight_record{model_id, neuron_id, input_index, value}   /* value ×100 scaled */
+bias_record{model_id, neuron_id, value}
+```
 
 ### Highlights
 

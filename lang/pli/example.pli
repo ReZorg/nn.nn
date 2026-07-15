@@ -8,6 +8,11 @@
 
 /* Include the main neural network module */
 @import "nn.pli"
+@import "layers.pli"
+@import "criteria.pli"
+@import "momentum_adam_rmsprop.pli"
+@import "recurrent.pli"
+@import "snp.pli"
 
 /* ============================================================================
  * EXAMPLE 1: Simple Prediction
@@ -372,6 +377,185 @@
 }
 
 /* ============================================================================
+ * EXAMPLE 9: Xavier Initialization
+ * Use principled weight initialization for faster convergence
+ * ============================================================================ */
+
+@example xavier_initialization
+{
+    @description "Compare Xavier-initialized vs uniformly-initialized networks"
+
+    @membrane_structure
+    {
+        [main
+            /* Xavier bounds adapt to layer size: +-sqrt(6/(fan_in+fan_out)) */
+            [net_xavier
+                [layer1 linear_layer_init(8, 16, xavier)]'net_xavier
+                [act1 tanh_activation]'net_xavier
+                [layer2 linear_layer_init(16, 1, xavier)]'net_xavier
+            ]'main
+
+            /* Legacy uniform random(-50, 50) */
+            [net_uniform
+                [layer1 linear_layer_init(8, 16, uniform)]'net_uniform
+                [act1 tanh_activation]'net_uniform
+                [layer2 linear_layer_init(16, 1, uniform)]'net_uniform
+            ]'main
+        ]
+    }
+
+    @execution
+    {
+        /* Train both for the same epochs and compare initial loss decay */
+        train_network(net_xavier, training_data, 100, 10)
+        train_network(net_uniform, training_data, 100, 10)
+
+        []'main (comparison{
+            "Note": "Xavier keeps activation variance stable across layers,",
+            "Effect": "avoiding saturation of tanh in early epochs"
+        }, out)
+    }
+}
+
+/* ============================================================================
+ * EXAMPLE 10: Word Embeddings with LookupTable
+ * Map token IDs to dense vectors and classify short sequences
+ * ============================================================================ */
+
+@example word_embedding_example
+{
+    @description "Embedding lookup feeding a linear classifier"
+
+    @membrane_structure
+    {
+        [main
+            [embed lookup_table(10, 4)]'main   /* vocab 10, dim 4 */
+            [classifier linear_layer(4, 2)]'main
+            [output softmax]'main
+        ]'main
+    }
+
+    @execution
+    {
+        /* Look up token 7 at position 1 */
+        [token{1, 7}]'embed
+
+        /* Embedding row 7 flows to the classifier */
+        [output{1, d, v}]'embed -> [input{d, v}]'classifier
+
+        /* Class probabilities out of softmax */
+        [probability{c, p}]'output ->
+            []'output (class_prob{c, p}, out)
+    }
+}
+
+/* ============================================================================
+ * EXAMPLE 11: Sequence Prediction with LSTM
+ * Learn to continue a simple arithmetic sequence
+ * ============================================================================ */
+
+@example lstm_sequence_prediction
+{
+    @description "Train an LSTM to predict the next element of a sequence"
+
+    @membrane_structure
+    {
+        [main
+            [model lstm(1, 8, 4)]'main
+            [head linear_layer(8, 1)]'main
+        ]'main
+    }
+
+    @execution
+    {
+        /* Training sequences: predict x_{t+1} from x_1..x_t */
+        /* [10, 20, 30, 40] -> 50; [20, 30, 40, 50] -> 60 */
+        [x{1, 1, 10}, x{2, 1, 20}, x{3, 1, 30}, x{4, 1, 40}, target{50}]'model
+        [x{1, 1, 20}, x{2, 1, 30}, x{3, 1, 40}, x{4, 1, 50}, target{60}]'model
+
+        /* Final hidden state feeds the regression head */
+        [hidden{4, h, v}]'model -> [input{h, v}]'head
+
+        train_network(model, sequence_data, 500, 5)
+
+        /* Predict continuation of [30, 40, 50, 60] (expect ~70) */
+        [x{1, 1, 30}, x{2, 1, 40}, x{3, 1, 50}, x{4, 1, 60}]'model
+        [output{1, v}]'head -> []'head (prediction{v}, out)
+    }
+}
+
+/* ============================================================================
+ * EXAMPLE 12: Class-Imbalanced Training with Weighted NLL
+ * Handle a 9:1 class imbalance with per-class loss weights
+ * ============================================================================ */
+
+@example weighted_loss_example
+{
+    @description "Weighted NLL to compensate for class imbalance"
+
+    @membrane_structure
+    {
+        [main
+            [classifier
+                [layer1 linear_layer(4, 8)]'classifier
+                [act1 relu_activation]'classifier
+                [layer2 linear_layer(8, 2)]'classifier
+                [out softmax]'classifier
+            ]'main
+            [loss weighted_nll_criterion(2)]'main
+        ]'main
+    }
+
+    @execution
+    {
+        /* Class 2 is rare (10% of samples): weight it 9x (900) */
+        [class_weight{1, 100}]'loss -> [class_weight{1, 100}]'loss
+        [class_weight{2, 100}]'loss -> [class_weight{2, 900}]'loss
+
+        train_network(classifier, imbalanced_data, 300, 10)
+
+        []'main (display{
+            "Weighted loss prevents the network from",
+            "ignoring the minority class"
+        }, out)
+    }
+}
+
+/* ============================================================================
+ * EXAMPLE 13: Spiking XOR with an SN P System
+ * Exact XOR using spiking neural P system semantics - no training needed
+ * ============================================================================ */
+
+@example snp_xor_example
+{
+    @description "XOR via spike routing, firing thresholds, and inhibition"
+
+    @membrane_structure
+    {
+        [main
+            snp_xor
+        ]'main
+    }
+
+    @execution
+    {
+        /* Truth table via spike injection */
+        /* (0,0): no spikes -> no output spike */
+        /* (1,0): (a, in)'in1 -> OR fires, AND does not -> output spikes */
+        /* (0,1): (a, in)'in2 -> output spikes */
+        /* (1,1): both spike -> AND fires and inhibits output -> no spike */
+
+        (a, in)'in1
+        step(3)
+
+        []'main (display{
+            "SN P systems compute XOR structurally:",
+            "OR neuron (threshold 1) minus AND inhibition (threshold 2)"
+        }, out)
+    }
+}
+
+/* ============================================================================
  * MAIN RUNNER
  * ============================================================================ */
 
@@ -390,6 +574,11 @@
         "  6. custom_architecture",
         "  7. incremental_training",
         "  8. loss_function_comparison",
+        "  9. xavier_initialization",
+        "  10. word_embedding_example",
+        "  11. lstm_sequence_prediction",
+        "  12. weighted_loss_example",
+        "  13. snp_xor_example",
         "",
         "Run all examples:",
         "  plingua example.pli"
@@ -404,6 +593,11 @@
     custom_architecture
     incremental_training
     loss_function_comparison
+    xavier_initialization
+    word_embedding_example
+    lstm_sequence_prediction
+    weighted_loss_example
+    snp_xor_example
     
     []'main (display{
         "All examples completed successfully!",

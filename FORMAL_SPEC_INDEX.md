@@ -2,12 +2,13 @@
 
 ## 📋 Quick Start
 
-This repository contains a neural network library with implementations in **Lua/Torch**, **Prolog**, and **C**. The `docs/` directory contains comprehensive formal specifications and architectural documentation.
+This repository contains a neural network library with implementations in **Lua/Torch**, **Prolog**, **C**, **PLingua (P-Systems)**, **Racket**, **Scheme**, and **Raku**. The `docs/` directory contains comprehensive formal specifications and architectural documentation.
 
 **Choose your path:**
 - 🏗️ **Architecture Overview**: Start with [`docs/architecture_overview.md`](docs/architecture_overview.md) for visual diagrams and system design
 - 📐 **Formal Specifications**: Dive into Z++ specs starting with [`docs/data_model.zpp`](docs/data_model.zpp)
 - 📖 **Reading Guide**: See [`docs/README.md`](docs/README.md) for a complete guide
+- 🧫 **Membrane Computing**: See [`lang/pli/README.md`](lang/pli/README.md) for the PLingua (P-Systems) implementation
 
 ## 📚 Documentation Overview
 

@@ -211,6 +211,53 @@
     }
 }
 
+/* Binary Cross Entropy: for binary classification
+ * BCE = -(t*log(p) + (1-t)*log(1-p))
+ * Values scaled by 100: probabilities p and targets t in [0, 100]
+ */
+@module bce_criterion
+{
+    @rules compute_loss
+    {
+        /* Compute BCE loss per element (scaled by 100) */
+        [predicted{i, p}, target{i, t}]'loss ->
+            [bce{i, round(-(t*log(p/100) + (100-t)*log((100-p)/100))/100)}]'loss
+
+        /* Sum element losses into total loss */
+        [bce{i, l}]'loss ->
+            [total_loss{l}]'loss
+
+        /* Gradient: (p - t) / (p * (1 - p)), scaled by 100 */
+        [predicted{i, p}, target{i, t}]'loss ->
+            []'loss (gradient{i, round(10000*(p-t)/(p*(100-p)))}, out)
+    }
+}
+
+/* Absolute Error (L1): for robust regression
+ * AbsErr = |predicted - target|
+ */
+@module abs_criterion
+{
+    @rules compute_loss
+    {
+        /* Compute absolute error */
+        [predicted{i, p}, target{i, t}]'loss ->
+            [abs_error{i, abs(p-t)}]'loss
+
+        /* Sum all absolute errors */
+        [abs_error{i, e}]'loss ->
+            [total_loss{e}]'loss
+
+        /* Gradient: sign(predicted - target), scaled by 100 */
+        [predicted{i, p}, target{i, t}]'loss ->
+            []'loss (gradient{i, 100}, out) where p > t
+        [predicted{i, p}, target{i, t}]'loss ->
+            []'loss (gradient{i, -100}, out) where p < t
+        [predicted{i, p}, target{i, t}]'loss ->
+            []'loss (gradient{i, 0}, out) where p == t
+    }
+}
+
 /* ============================================================================
  * TRAINING PROCEDURE
  * Implements mini-batch gradient descent
@@ -413,7 +460,7 @@
         "Feedforward neural networks",
         "Multiple activation functions (Sigmoid, Tanh, ReLU)",
         "Backpropagation training",
-        "Loss functions (MSE, NLL)",
+        "Loss functions (MSE, NLL, BCE, Absolute Error)",
         "Modular architecture",
         "Sequential containers",
         "Softmax for classification"

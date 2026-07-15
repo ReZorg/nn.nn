@@ -171,12 +171,6 @@
     {
         [grad_h_from_out{t, h, go}, grad_h_from_rec{t, h, gr}]'elman ->
             [grad_h{t, h, go + gr}]'elman
-        [grad_h_from_out{t, h, go}]'elman ->
-            [grad_h{t, h, go}]'elman
-    @rules bptt_combine_grad
-    {
-        [grad_h_from_out{t, h, go}, grad_h_from_rec{t, h, gr}]'elman ->
-            [grad_h{t, h, go + gr}]'elman
         /* At the last timestep (or any step without future gradient), only output grad exists */
         [grad_h_from_out{t, h, go}]'elman ->
             [grad_h{t, h, go}]'elman

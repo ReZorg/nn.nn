@@ -7,6 +7,11 @@
 
 /* Include the main neural network module */
 @import "nn.pli"
+@import "momentum_adam_rmsprop.pli"
+@import "convolutional.pli"
+@import "recurrent.pli"
+@import "attention.pli"
+@import "snp.pli"
 
 /* ============================================================================
  * DEMO 1: Basic Neural Network Creation and Prediction
@@ -424,6 +429,171 @@
 }
 
 /* ============================================================================
+ * DEMO 8: Optimizer Comparison (Adam vs SGD)
+ * ============================================================================ */
+
+@demo optimizer_comparison
+{
+    @description "Compare SGD and Adam convergence on the same task"
+
+    @membrane_structure
+    {
+        [main
+            [sgd_net
+                [layer linear_layer(2, 1)]'sgd_net
+                [opt sgd_momentum(10, 90)]'sgd_net
+            ]'main
+            [adam_net
+                [layer linear_layer(2, 1)]'adam_net
+                [opt adam(10, 90, 99, 1)]'adam_net
+            ]'main
+        ]
+    }
+
+    @execution
+    {
+        /* Both networks train on y = x1 + x2 for 50 epochs */
+        for (epoch = 1; epoch <= 50; epoch++)
+        {
+            [input{1, 30}, input{2, 40}, target{70}]'sgd_net
+            [input{1, 30}, input{2, 40}, target{70}]'adam_net
+        }
+
+        /* Compare final losses - Adam typically converges faster */
+        [loss{l}]'sgd_net  -> []'sgd_net  (display{"SGD loss:", l}, out)
+        [loss{l}]'adam_net -> []'adam_net (display{"Adam loss:", l}, out)
+    }
+}
+
+/* ============================================================================
+ * DEMO 9: LeNet-5 Convolutional Network
+ * ============================================================================ */
+
+@demo lenet5_demo
+{
+    @description "Run the LeNet-5 architecture on a synthetic 28x28 image"
+
+    @membrane_structure
+    {
+        [main
+            lenet5
+        ]'main
+    }
+
+    @execution
+    {
+        /* Feed a synthetic image: bright square on dark background */
+        for (r = 10; r <= 18; r++)
+        {
+            for (c = 10; c <= 18; c++)
+            {
+                [input{1, r, c, 90}]'lenet5
+            }
+        }
+
+        /* Forward through conv/pool/linear stages */
+        forward(lenet5)
+
+        /* Show classification probabilities */
+        [probability{class, p}]'lenet5 ->
+            []'lenet5 (display{"class", class, "prob", p}, out)
+    }
+}
+
+/* ============================================================================
+ * DEMO 10: LSTM Sequence Prediction
+ * ============================================================================ */
+
+@demo lstm_sequence_demo
+{
+    @description "Predict the next value of a repeating sequence with an LSTM"
+
+    @membrane_structure
+    {
+        [main
+            [model lstm(1, 8, 4)]'main
+        ]'main
+    }
+
+    @execution
+    {
+        /* Sequence: 10, 20, 30, 40 -> predict 50 */
+        [x{1, 1, 10}]'model
+        [x{2, 1, 20}]'model
+        [x{3, 1, 30}]'model
+        [x{4, 1, 40}]'model
+
+        /* Gates evolve through time-indexed membranes */
+        forward(model)
+
+        [hidden{4, h, v}]'model ->
+            []'model (display{"final hidden state", h, v}, out)
+    }
+}
+
+/* ============================================================================
+ * DEMO 11: Attention Weights
+ * ============================================================================ */
+
+@demo attention_demo
+{
+    @description "Visualize scaled dot-product attention weights"
+
+    @membrane_structure
+    {
+        [main
+            [attn scaled_dot_product_attention(3, 2)]'main
+        ]'main
+    }
+
+    @execution
+    {
+        /* Three positions; position 1 should attend mostly to itself */
+        [q{1, 1, 100}, q{1, 2, 0}]'attn
+        [k{1, 1, 100}, k{1, 2, 0}]'attn
+        [k{2, 1, 0},   k{2, 2, 100}]'attn
+        [k{3, 1, 50},  k{3, 2, 50}]'attn
+        [v_val{1, 1, 10}, v_val{2, 1, 20}, v_val{3, 1, 30}]'attn
+
+        forward(attn)
+
+        [attn_weight{1, j, w}]'attn ->
+            []'attn (display{"attention 1 ->", j, "weight", w}, out)
+    }
+}
+
+/* ============================================================================
+ * DEMO 12: Spiking Neural P System XOR
+ * ============================================================================ */
+
+@demo snp_xor_demo
+{
+    @description "Compute XOR with true spiking neural P system semantics"
+
+    @membrane_structure
+    {
+        [main
+            snp_xor
+        ]'main
+    }
+
+    @execution
+    {
+        /* Case (1, 0): spike into in1 only -> output should spike */
+        (a, in)'in1
+        step(3)
+        [spike_emitted{}]'out_neuron ->
+            []'out_neuron (display{"XOR(1,0) = 1"}, out)
+
+        /* Case (1, 1): spikes into both -> AND inhibits output */
+        (a, in)'in1
+        (a, in)'in2
+        step(3)
+        []'main (display{"XOR(1,1) = 0 (inhibited)"}, out)
+    }
+}
+
+/* ============================================================================
  * MAIN DEMO RUNNER
  * ============================================================================ */
 
@@ -451,6 +621,11 @@
         "5. Multi-Layer Network",
         "6. Training Visualization",
         "7. Binary Classification",
+        "8. Optimizer Comparison (SGD vs Adam)",
+        "9. LeNet-5 Convolutional Network",
+        "10. LSTM Sequence Prediction",
+        "11. Attention Weights",
+        "12. Spiking Neural P System XOR",
         "",
         "Running all demos..."
     }, out)
@@ -463,6 +638,11 @@
     multilayer_network
     training_visualization
     binary_classification
+    optimizer_comparison
+    lenet5_demo
+    lstm_sequence_demo
+    attention_demo
+    snp_xor_demo
     
     /* Conclusion */
     []'main (display{
