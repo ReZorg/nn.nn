@@ -29,6 +29,10 @@ This implementation demonstrates how neural network algorithms can be expressed 
 - **Layer Modules**: Linear/Dense, LookupTable (embedding), Bilinear, SparseLinear
 - **Criterion Modules**: MSE, NLL, BCE, Absolute Error, CrossEntropy, SmoothL1/Huber, Margin, KLDiv, weighted NLL
 - **Initialization**: Xavier/Glorot and He/Kaiming schemes via `linear_layer_init`
+- **Graph Neural Networks**: Message passing, GCN, graph attention (GAT), graph readout — membranes as graph nodes
+- **Neuroevolution**: Genome membranes, mutation, crossover, division-based reproduction, tournament selection, NEAT-style topology evolution
+- **Bayesian Layers**: Weight distributions, reparameterization trick, KL regularization, Monte-Carlo uncertainty estimates
+- **Transformer Decoder**: Causal masking, masked self-attention, cross-attention, decoder stacks, positional encodings, greedy decoding
 
 ## Installation
 
@@ -212,6 +216,78 @@ Backward: Gradient ← Weight × Gradient ← Loss
 /* Updates weights via backpropagation */
 ```
 
+### Graph Neural Networks (gnn.pli)
+
+#### GCN Layer
+```plingua
+@module gcn_layer(num_nodes, in_dim, out_dim)
+/* Degree-normalized graph convolution with shared projection */
+/* Nodes are membranes; edges are edge{i, j, w} objects */
+```
+
+#### Graph Attention Layer
+```plingua
+@module graph_attention_layer(num_nodes, feat_dim)
+/* GAT: per-edge attention coefficients with softmax normalization */
+```
+
+#### Graph Readout
+```plingua
+@module graph_readout(num_nodes, feat_dim)
+/* Global sum/mean/max pooling into a graph-level embedding */
+```
+
+### Neuroevolution (neuroevolution.pli)
+
+#### Divide and Mutate
+```plingua
+@module divide_and_mutate(fitness_threshold)
+/* Fit genome membranes divide (elite + mutated offspring); */
+/* unfit genomes dissolve - native P-Systems division/dissolution */
+```
+
+#### Neuroevolution Loop
+```plingua
+@module neuroevolution_loop(pop_size, generations, mutation_rate)
+/* Orchestrates evaluate -> select -> divide/mutate phases */
+```
+
+### Bayesian Layers (bayesian.pli)
+
+#### Bayesian Linear Layer
+```plingua
+@module bayes_linear_layer(input_size, output_size)
+/* Weight distributions w_mu / w_rho; reparameterization trick */
+/* w = mu + softplus(rho) * eps, eps ~ N(0, 1) */
+```
+
+#### Monte-Carlo Prediction
+```plingua
+@module mc_predict(num_samples)
+/* Stochastic forward passes -> pred_mean / pred_var (uncertainty) */
+```
+
+### Transformer Decoder (transformer_decoder.pli)
+
+#### Masked Self-Attention
+```plingua
+@module masked_self_attention(seq_len, d_k)
+/* Causal `where j <= i` guard: no attention to future positions */
+```
+
+#### Decoder Block and Full Transformer
+```plingua
+@module transformer_decoder_block(tgt_len, src_len, d_model, num_heads, d_ff)
+@module full_transformer(vocab_size, src_len, tgt_len, d_model, num_heads, d_ff, num_layers)
+/* Masked self-attention -> cross-attention -> FFN, each add&norm */
+```
+
+#### Greedy Decoding
+```plingua
+@module greedy_decode(vocab_size, max_len, eos_token)
+/* Autoregressive generation via argmax over last-position logits */
+```
+
 ### Inference
 
 #### Predict
@@ -357,8 +433,8 @@ plingua test_nn.pli
 plingua test_extensions.pli
 
 # Expected output:
-# Total Tests: 22
-# Passed: 22
+# Total Tests: 30
+# Passed: 30
 # Failed: 0
 # Success Rate: 100%
 ```
@@ -390,6 +466,10 @@ plingua test_extensions.pli
 - ✅ Scaled dot-product attention scores
 - ✅ SN P neuron firing and sub-threshold behavior
 - ✅ Exporter save/load weight round-trip
+- ✅ GCN degree-normalized aggregation and graph readout pooling
+- ✅ Membrane-division reproduction and tournament selection
+- ✅ Bayesian reparameterized weights and Monte-Carlo mean
+- ✅ Causal mask and decoder-block residual connection
 
 ## Running Demos
 
@@ -588,12 +668,10 @@ Completed extensions:
 - [x] Extended activations, criteria, containers, layers — `activations.pli`, `criteria.pli`, `containers.pli`, `layers.pli`
 - [x] Attention/transformer modules — `attention.pli`
 - [x] Spiking Neural P Systems — `snp.pli`
-
-Potential further extensions:
-- [ ] Graph neural network modules (membranes as graph nodes)
-- [ ] Neuroevolution via membrane division rules
-- [ ] Probabilistic P-Systems for Bayesian layers
-- [ ] Full transformer decoder with causal masking
+- [x] Graph neural network modules (membranes as graph nodes) — `gnn.pli`
+- [x] Neuroevolution via membrane division rules — `neuroevolution.pli`
+- [x] Probabilistic P-Systems for Bayesian layers — `bayesian.pli`
+- [x] Full transformer decoder with causal masking — `transformer_decoder.pli`
 
 ## References
 
@@ -641,7 +719,16 @@ The following modules extend the core implementation with advanced features:
 | `layers.pli` | LookupTable (embedding), Bilinear, SparseLinear, Xavier/He initialization |
 | `attention.pli` | Scaled dot-product attention, multi-head attention, transformer encoder block, native batch processing |
 | `snp.pli` | Spiking Neural P Systems: SN P neurons, synapses, spike-train encoding, rate-coded bridge, SN P XOR |
-| `test_extensions.pli` | 22 tests covering all extension and v2.1 modules |
+| `test_extensions.pli` | 30 tests covering all extension, v2.1 and v2.2 modules |
+
+## Extensions (v2.2)
+
+| Module | Description |
+|--------|-------------|
+| `gnn.pli` | Graph neural networks with membranes as graph nodes: message passing (sum/mean/max), GCN layer with degree normalization and backward pass, graph attention (GAT), graph readout |
+| `neuroevolution.pli` | Neuroevolution via membrane division: genome membranes, point mutation, antiport crossover, divide-and-mutate reproduction, tournament selection, NEAT-style structural mutation, evolution loop |
+| `bayesian.pli` | Probabilistic P-Systems for Bayesian layers: Gaussian sampler (central-limit), Bayes-by-Backprop linear layer, KL divergence regularizer, Monte-Carlo predictive mean/variance |
+| `transformer_decoder.pli` | Full transformer decoder with causal masking: masked self-attention, cross-attention, masked multi-head attention, decoder blocks/stacks, sinusoidal positional encoding, full encoder-decoder transformer, greedy decoding |
 
 ### Weight Interchange Format
 
