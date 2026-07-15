@@ -3,7 +3,9 @@
  * Covers the v2.x extension modules and the new v2.1 modules:
  *   optimizers, batch/layer norm, dropout, convolutional, recurrent,
  *   gradient utilities, new activations, new criteria, containers,
- *   layers, attention, SN P systems, and exporter round-trip.
+ *   layers, attention, SN P systems, exporter round-trip, and the
+ *   v2.2 modules: GNN, neuroevolution, Bayesian layers and the
+ *   transformer decoder with causal masking.
  *
  * Uses the same test_framework as test_nn.pli.
  */
@@ -24,6 +26,10 @@
 @import "recurrent.pli"
 @import "backpropagation.pli"
 @import "integration.pli"
+@import "gnn.pli"
+@import "neuroevolution.pli"
+@import "bayesian.pli"
+@import "transformer_decoder.pli"
 @import "test_nn.pli"   /* reuse test_framework */
 
 /* ============================================================================
@@ -642,6 +648,245 @@
 }
 
 /* ============================================================================
+ * GRAPH NEURAL NETWORK TESTS
+ * ============================================================================ */
+
+@test gcn_aggregation_test
+{
+    @description "GCN aggregation on a 3-node triangle: mean of neighbor features"
+
+    @setup
+    {
+        /* Triangle graph, self-loops included; node 1 features from
+         * itself (100), node 2 (200) and node 3 (300); deg = 3 */
+        [test_gcn
+            [node{1} feat{1, 100} deg{3}]'test
+            [node{2} feat{1, 200} deg{3}]'test
+            [node{3} feat{1, 300} deg{3}]'test
+            edge{1, 1, 100}
+            edge{2, 1, 100}
+            edge{3, 1, 100}
+        ]'main
+    }
+
+    @rules
+    {
+        /* Messages into node 1: 100 + 200 + 300 = 600 */
+        [msg{1, 100}, msg{1, 200}]'node{1} -> [msg{1, 300}]'node{1}
+        [msg{1, 300}, msg{1, 300}]'node{1} -> [msg{1, 600}]'node{1}
+
+        /* Degree-normalized aggregate: 600 / 3 = 200 */
+        [msg{1, 600}, deg{3}]'node{1} -> [agg{1, 200}, deg{3}]'node{1}
+
+        assert_equal("gcn_mean_aggregate", 200, agg{1})
+    }
+}
+
+@test graph_readout_test
+{
+    @description "Graph readout sum pooling over 3 node features"
+
+    @setup
+    {
+        [test_readout
+            pool{1, 100}
+            pool{1, 200}
+            pool{1, 300}
+        ]'main
+    }
+
+    @rules
+    {
+        /* Pairwise sum: 100 + 200 = 300; 300 + 300 = 600 */
+        [pool{1, 100}, pool{1, 200}]'readout -> [pool{1, 300}]'readout
+        [pool{1, 300}, pool{1, 300}]'readout -> [pool{1, 600}]'readout
+
+        assert_equal("graph_readout_sum", 600, pool{1})
+    }
+}
+
+/* ============================================================================
+ * NEUROEVOLUTION TESTS
+ * ============================================================================ */
+
+@test membrane_division_test
+{
+    @description "Fit genome divides into elite copy and mutable offspring"
+
+    @setup
+    {
+        [test_evolution
+            [genome{1}
+                gene{1, 42}
+                fitness{80}   /* above threshold 50 */
+            ]'test
+        ]'main
+    }
+
+    @rules
+    {
+        /* Division: [genome{1}] -> [genome{2}] [genome{3}] */
+        [gene{1, 42}, fitness{80}]'genome{1} ->
+            [gene{1, 42}, fitness{80}]'genome{2}
+            [gene{1, 42}, fitness{80}, mutable{}]'genome{3}
+
+        /* Elite daughter keeps the gene verbatim */
+        assert_equal("division_elite_gene", 42, gene{1})
+
+        /* Offspring mutates: 42 + 8 = 50 */
+        [gene{1, 42}, mutable{}]'genome{3} -> [gene{1, 50}]'genome{3}
+
+        assert_equal("division_mutated_gene", 50, gene{1})
+    }
+}
+
+@test tournament_selection_test
+{
+    @description "Pairwise fitness comparison keeps the fitter contender"
+
+    @setup
+    {
+        [test_tournament
+            contender{1, 30}
+            contender{2, 70}
+        ]'main
+    }
+
+    @rules
+    {
+        /* max(30, 70) -> contender 2 survives */
+        [contender{1, 30}, contender{2, 70}]'population ->
+            [contender{2, 70}]'population
+
+        assert_equal("tournament_winner_fitness", 70, contender{2})
+    }
+}
+
+/* ============================================================================
+ * BAYESIAN LAYER TESTS
+ * ============================================================================ */
+
+@test bayes_linear_forward_test
+{
+    @description "Reparameterized weight w = mu + std*eps with fixed eps"
+
+    @setup
+    {
+        [test_bayes
+            [neuron{1}
+                w_mu{1, 50}      /* mu = 0.5 */
+                w_std{1, 20}     /* std = 0.2 */
+                eps{1, 100}      /* eps = 1.0 (fixed for the test) */
+                input{1, 100}    /* x = 1.0 */
+                bias{0}
+            ]'test
+        ]'main
+    }
+
+    @rules
+    {
+        /* w = 50 + 20*100/100 = 70 */
+        [w_mu{1, 50}, w_std{1, 20}, eps{1, 100}]'neuron{1} ->
+            [weight{1, 70}]'neuron{1}
+
+        assert_equal("bayes_sampled_weight", 70, weight{1})
+
+        /* Forward: 100 * 70 / 100 + 0 = 70 */
+        [input{1, 100}, weight{1, 70}, bias{0}]'neuron{1} ->
+            [output{1, 70}]'neuron{1}
+
+        assert_equal("bayes_forward_output", 70, output{1})
+    }
+}
+
+@test mc_predict_mean_test
+{
+    @description "Monte-Carlo predictive mean over 2 stochastic samples"
+
+    @setup
+    {
+        [test_mc
+            mc_output{1, 1, 60}
+            mc_output{2, 1, 100}
+            num_samples{2}
+        ]'main
+    }
+
+    @rules
+    {
+        /* Sum: 60 + 100 = 160; mean = 160/2 = 80 */
+        [mc_output{1, 1, 60}, mc_output{2, 1, 100}]'mc ->
+            [mc_output{1, 1, 160}]'mc
+
+        [mc_output{1, 1, 160}, num_samples{2}]'mc ->
+            [pred_mean{1, 80}]'mc
+
+        assert_equal("mc_pred_mean", 80, pred_mean{1})
+    }
+}
+
+/* ============================================================================
+ * TRANSFORMER DECODER TESTS
+ * ============================================================================ */
+
+@test causal_mask_test
+{
+    @description "Causal guard: score{2,3} never created; row 1 attends only to itself"
+
+    @setup
+    {
+        [test_causal
+            q{1, 1, 100}
+            q{2, 1, 100}
+            k{1, 1, 100}
+            k{2, 1, 100}
+            k{3, 1, 100}
+            mask{2, 3, (3 <= 2 ? 1 : 0)}   /* causal_mask entry for (2,3) */
+        ]'main
+    }
+
+    @rules
+    {
+        /* Legal scores only (j <= i): (1,1), (2,1), (2,2) */
+        [q{1, 1, 100}, k{1, 1, 100}]'attn ->
+            [score{1, 1, 100}]'attn        /* j=1 <= i=1 */
+        [q{2, 1, 100}, k{2, 1, 100}]'attn ->
+            [score{2, 2, 100}]'attn        /* j=2 <= i=2 */
+
+        /* Future position (2,3) is masked out: mask value is 0 */
+        assert_equal("causal_mask_future_zero", 0, mask{2, 3})
+
+        /* Row 1 has a single legal position: softmax gives weight 100 */
+        [score{1, 1, 100}, row_sum_final{1, 100}]'attn ->
+            [attn_weight{1, 1, 100}]'attn
+
+        assert_equal("causal_row1_self_weight", 100, attn_weight{1, 1})
+    }
+}
+
+@test decoder_residual_test
+{
+    @description "Decoder block residual: self-attention output + saved input"
+
+    @setup
+    {
+        [test_decoder
+            self_out{1, 1, 30}
+            x_saved{1, 1, 50}
+        ]'main
+    }
+
+    @rules
+    {
+        /* Residual add: 30 + 50 = 80 fed into norm1 */
+        [self_out{1, 1, 30}, x_saved{1, 1, 50}]'decoder_block ->
+            [input{1, 1, 80}]'norm1
+
+        assert_equal("decoder_residual_sum", 80, input{1, 1})
+    }
+}
+
+/* ============================================================================
  * TEST RUNNER
  * ============================================================================ */
 
@@ -695,6 +940,22 @@
     /* Exporter */
     exporter_roundtrip_test
 
+    /* Graph neural networks */
+    gcn_aggregation_test
+    graph_readout_test
+
+    /* Neuroevolution */
+    membrane_division_test
+    tournament_selection_test
+
+    /* Bayesian layers */
+    bayes_linear_forward_test
+    mc_predict_mean_test
+
+    /* Transformer decoder */
+    causal_mask_test
+    decoder_residual_test
+
     [test_suite
         total_tests{t}
         passed_tests{p}
@@ -720,8 +981,8 @@
 @expected_output
 {
     test_results{
-        "Total Tests": 22,
-        "Passed": 22,
+        "Total Tests": 30,
+        "Passed": 30,
         "Failed": 0,
         "Success Rate": "100%"
     }

@@ -44,6 +44,14 @@
             module{layers,                "1.0.0", [nn]}
             module{attention,             "1.0.0", [nn, batch_normalization]}
             module{snp,                   "1.0.0", []}
+
+            /* v2.2 extension modules */
+            module{gnn,                   "1.0.0", [nn]}
+            module{neuroevolution,        "1.0.0", [nn, integration, gnn]}
+            module{bayesian,              "1.0.0", [nn, criteria, dropout]}
+            module{transformer_decoder,   "1.0.0", [nn, attention,
+                                                    batch_normalization,
+                                                    layers, activations]}
         ]'main
     }
 
@@ -119,6 +127,14 @@
     @macro divide(membrane, left_objects, right_objects)
     {
         [membrane] -> [left_objects]'new_left [right_objects]'new_right
+    }
+
+    /* Probabilistic rule: fire lhs -> rhs with probability p (0-100).
+     * Maps onto native probabilistic P-System rules where supported;
+     * otherwise uses the random-guard convention (see bayesian.pli). */
+    @macro prob_rule(p, lhs, rhs, membrane)
+    {
+        [lhs]'membrane -> [rhs]'membrane where random(0, 100) < p
     }
 
     /* Priority annotation */
