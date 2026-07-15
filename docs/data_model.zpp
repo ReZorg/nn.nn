@@ -432,6 +432,68 @@ SECTION 8: CRITERION/LOSS MODULES
 SECTION 9: CONVOLUTION LAYER MODULES
 ══════════════════════════════════════════════════════════════════════════════
 
+┌─ ConvNd[Rank : ℕ₁] ─────────────────────────────────────────────────────────┐
+│ ParameterizedModule                                                         │
+│ inChannels : ℕ                                                              │
+│ outChannels : ℕ                                                             │
+│ kernelShape : seq ℕ                                                         │
+│ stride : seq ℕ                                                              │
+│ padding : seq ℕ                                                             │
+│ dilation : seq ℕ                                                            │
+│ weight : Tensor                                                             │
+│ bias : Tensor                                                               │
+│                                                                             │
+│ moduleType = ConvolutionalLayer                                             │
+│ inChannels > 0 ∧ outChannels > 0                                            │
+│ #kernelShape = Rank ∧ #stride = Rank ∧ #padding = Rank ∧ #dilation = Rank  │
+│ ∀ i : 1..Rank • kernelShape(i) > 0 ∧ stride(i) > 0 ∧ dilation(i) > 0       │
+│ weight.shape = ⟨outChannels, inChannels⟩ ⌢ kernelShape                     │
+│ bias.shape = [outChannels]                                                  │
+│ "weight" ∈ dom parameters ∧ "bias" ∈ dom parameters                        │
+│                                                                             │
+│ -- Output shape law (single invariant, all ranks):                         │
+│ ∀ inShape : seq ℕ | #inShape = Rank •                                       │
+│     outShape(i) = ⌊(inShape(i) + 2·padding(i)                              │
+│                     − dilation(i)·(kernelShape(i) − 1) − 1) / stride(i)⌋   │
+│                   + 1,  ∀ i ∈ 1..Rank                                       │
+└─────────────────────────────────────────────────────────────────────────────┘
+  Rank-parametric nD convolution. Dimension is a parameter, not a class:
+  a single generic schema replaces per-rank Temporal/Spatial/Volumetric
+  schemas. TemporalConvolution = ConvNd[1], SpatialConvolution = ConvNd[2],
+  VolumetricConvolution = ConvNd[3]; ranks 4 and above require no new schema.
+  Reference implementation: lang/pl/nn_nd.pl (convnd_module/5,8).
+
+┌─ PoolNd[Rank : ℕ₁] ─────────────────────────────────────────────────────────┐
+│ Module                                                                      │
+│ kernelShape : seq ℕ                                                         │
+│ stride : seq ℕ                                                              │
+│ padding : seq ℕ                                                             │
+│ mode : {max, avg}                                                           │
+│                                                                             │
+│ #kernelShape = Rank ∧ #stride = Rank ∧ #padding = Rank                     │
+│ ∀ i : 1..Rank • kernelShape(i) > 0 ∧ stride(i) > 0                         │
+│                                                                             │
+│ -- Same output shape law as ConvNd with dilation(i) = 1                    │
+└─────────────────────────────────────────────────────────────────────────────┘
+  Rank-parametric pooling: reduction (max or mean) over an arbitrary window
+  of dimensions, sharing the ConvNd output shape invariant.
+
+┌─ FractalModule ─────────────────────────────────────────────────────────────┐
+│ Module                                                                      │
+│ depth : ℕ₁                                                                  │
+│ base : Module                                                               │
+│                                                                             │
+│ -- Self-similar container recursion (FractalNet):                          │
+│ f(1, base) = base                                                           │
+│ f(k, base) = concat_avg⟨sequential⟨f(k−1, base), f(k−1, base)⟩, base⟩,     │
+│              k > 1                                                          │
+│                                                                             │
+│ -- Longest path grows as 2^(depth−1) while the definition stays O(1)       │
+│ maxDepth(f(k, base)) = 2^(k−1)                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+  Fractal topology container. concat_avg averages branch outputs elementwise;
+  drop-path regularization is a stochastic branch mask over concat_avg.
+
 ┌─ SpatialConvolution ────────────────────────────────────────────────────────┐
 │ ParameterizedModule                                                         │
 │ nInputPlane : ℕ                                                             │
