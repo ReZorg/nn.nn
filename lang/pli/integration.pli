@@ -36,6 +36,14 @@
             module{backpropagation,       "1.0.0", [nn]}
             module{visualization,         "1.0.0", [nn]}
             module{integration,           "1.0.0", [nn]}
+
+            /* v2.1 extension modules */
+            module{activations,           "1.0.0", [nn]}
+            module{criteria,              "1.0.0", [nn]}
+            module{containers,            "1.0.0", [nn]}
+            module{layers,                "1.0.0", [nn]}
+            module{attention,             "1.0.0", [nn, batch_normalization]}
+            module{snp,                   "1.0.0", []}
         ]'main
     }
 
@@ -265,6 +273,52 @@
         {
             [weight{j, w}]'layer ->
                 []'layer (flat_val{layer, j, w}, out)
+        }
+    }
+
+    /* -------- Weight snapshot (save trained model) --------
+     * Interchange format shared with the pl/rkt/scm ports:
+     *   weight_record{layer_id, neuron_id, input_index, value}
+     *   bias_record{layer_id, neuron_id, value}
+     * Values use the x100 integer scaling convention.
+     */
+    @rules save_weights
+    {
+        [save_request{model_id}]'export ->
+        {
+            /* Snapshot every weight in every neuron of every layer */
+            [weight{j, w}]'neuron{i} ->
+                [weight{j, w}]'neuron{i}
+                (weight_record{model_id, i, j, w}, out)
+
+            [bias{b}]'neuron{i} ->
+                [bias{b}]'neuron{i}
+                (bias_record{model_id, i, b}, out)
+
+            /* End-of-snapshot marker for consumers */
+            []'export (save_complete{model_id}, out)
+        }
+    }
+
+    /* -------- Weight import (load trained model) --------
+     * Restores weight/bias objects from interchange records,
+     * replacing any existing values (round-trip with save_weights).
+     */
+    @rules load_weights
+    {
+        [load_request{model_id}]'export ->
+        {
+            /* Replace existing weights with recorded values */
+            (weight_record{model_id, i, j, w}, in)
+                [weight{j, old_w}]'neuron{i} ->
+                [weight{j, w}]'neuron{i}
+
+            (bias_record{model_id, i, b}, in)
+                [bias{old_b}]'neuron{i} ->
+                [bias{b}]'neuron{i}
+
+            /* Signal completion */
+            []'export (load_complete{model_id}, out)
         }
     }
 }
