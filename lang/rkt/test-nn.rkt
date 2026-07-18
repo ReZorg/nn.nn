@@ -55,7 +55,9 @@
   (if (> test-failed 0)
       (printf "FAILED: ~a tests failed~n" test-failed)
       (displayln "SUCCESS: All tests passed!"))
-  (displayln "=========================================="))
+  (displayln "==========================================")
+  (when (> test-failed 0)
+    (exit 1)))
 
 ;;; ============================================================================
 ;;; Activation Function Tests
