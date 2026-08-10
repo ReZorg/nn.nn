@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/torch/nn.svg?branch=master)](https://travis-ci.org/torch/nn)
+[![CI](https://github.com/ReZorg/nn.nn/actions/workflows/ci.yml/badge.svg)](https://github.com/ReZorg/nn.nn/actions/workflows/ci.yml)
 <a name="nn.dok"></a>
 # Neural Network Package #
 
@@ -19,3 +19,19 @@ This package provides an easy and modular way to build and train simple or compl
    * [Training](doc/training.md#nn.traningneuralnet.dok): how to train a neural network using [`StochasticGradient`](doc/training.md#nn.StochasticGradient);
    * [Testing](doc/testing.md): how to test your modules.
    * [Experimental Modules](https://github.com/clementfarabet/lua---nnx/blob/master/README.md): a package containing experimental modules and criteria.
+
+## Continuous Integration & Testing ##
+
+Every implementation in this repository is exercised by [GitHub Actions](.github/workflows/ci.yml). To run the suites locally:
+
+| Implementation | Unit tests | E2E demos |
+|---|---|---|
+| a9nn (pure Lua) | `cd lang/a9nn && lua run_tests.lua` | `lua examples/<example>.lua` |
+| Prolog | `cd lang/pl && swipl -q -l test_nn.pl -g run_tests -t halt` (also `test_modules.pl` / `run_module_tests`, `test_nd.pl` / `run_nd_tests`) | `swipl -q -l demo.pl -g run_all_demos -t halt` |
+| P-Lingua | `bash lang/pli/validate.sh` | — |
+| Raku | `cd lang/raku && raku test-nn.raku` | `raku demo.raku`, `raku example.raku` |
+| Racket | `cd lang/rkt && racket test-nn.rkt` | `racket demo.rkt`, `racket example.rkt` |
+| Scheme (Guile) | `cd lang/scm && guile --no-auto-compile -l nn.scm -l test-nn.scm -c '(run-all-tests)'` | `guile --no-auto-compile -l nn.scm -l demo.scm -c '(run-all-demos)'` |
+| Torch/nn (Lua) | Requires a full [Torch7](https://github.com/torch/distro) install: `luarocks make rocks/nn-scm-1.rockspec` then `lua -lnn -e "nn.test()"` (CI performs a syntax check of all modules) | — |
+
+Lint Lua sources with `luacheck lang/lua lang/a9nn` and build the docs with `mkdocs build --strict`.

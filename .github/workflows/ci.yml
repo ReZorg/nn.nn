@@ -1,0 +1,296 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────────
+  # Detect which language subtrees changed so PR builds only run what matters.
+  # On push / manual dispatch every job runs.
+  # ──────────────────────────────────────────────────────────────────────────
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      lua: ${{ steps.filter.outputs.lua }}
+      a9nn: ${{ steps.filter.outputs.a9nn }}
+      pl: ${{ steps.filter.outputs.pl }}
+      pli: ${{ steps.filter.outputs.pli }}
+      raku: ${{ steps.filter.outputs.raku }}
+      rkt: ${{ steps.filter.outputs.rkt }}
+      scm: ${{ steps.filter.outputs.scm }}
+      docs: ${{ steps.filter.outputs.docs }}
+      run_all: ${{ steps.mode.outputs.run_all }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: mode
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "run_all=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_all=false" >> "$GITHUB_OUTPUT"
+          fi
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            ci: &ci
+              - '.github/workflows/**'
+            lua:
+              - *ci
+              - 'lang/lua/**'
+              - 'test/**'
+              - '.luacheckrc'
+            a9nn:
+              - *ci
+              - 'lang/a9nn/**'
+              - '.luacheckrc'
+            pl:
+              - *ci
+              - 'lang/pl/**'
+            pli:
+              - *ci
+              - 'lang/pli/**'
+            raku:
+              - *ci
+              - 'lang/raku/**'
+            rkt:
+              - *ci
+              - 'lang/rkt/**'
+            scm:
+              - *ci
+              - 'lang/scm/**'
+            docs:
+              - *ci
+              - 'doc/**'
+              - 'mkdocs.yml'
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Repo-wide fast checks: Luacheck lint over the Lua trees (always runs).
+  # Warnings are reported but only hard errors (exit >= 2) fail the job.
+  # ──────────────────────────────────────────────────────────────────────────
+  lint-lua:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install luacheck
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lua-check
+      - name: Luacheck lang/lua and lang/a9nn
+        run: |
+          set +e
+          luacheck lang/lua lang/a9nn --codes -q
+          rc=$?
+          set -e
+          if [ "$rc" -ge 2 ]; then
+            echo "Luacheck reported syntax/IO errors (exit $rc)"
+            exit "$rc"
+          fi
+          echo "Luacheck completed (exit $rc; warnings are non-fatal)"
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # a9nn — pure-Lua NN + cognitive agent framework. Unit tests + e2e examples.
+  # ──────────────────────────────────────────────────────────────────────────
+  a9nn:
+    needs: changes
+    if: needs.changes.outputs.a9nn == 'true' || needs.changes.outputs.run_all == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        lua: [lua5.1, lua5.3, lua5.4, luajit]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ${{ matrix.lua }}
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ${{ matrix.lua }}
+      - name: Unit tests
+        working-directory: lang/a9nn
+        run: ${{ matrix.lua }} run_tests.lua
+      - name: E2E examples
+        working-directory: lang/a9nn
+        run: |
+          for example in examples/*.lua; do
+            echo "── Running $example ──"
+            timeout 300 ${{ matrix.lua }} "$example"
+          done
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Prolog (SWI-Prolog) — unit tests + demo e2e runs.
+  # swipl -g exits nonzero when the goal fails or raises.
+  # ──────────────────────────────────────────────────────────────────────────
+  prolog:
+    needs: changes
+    if: needs.changes.outputs.pl == 'true' || needs.changes.outputs.run_all == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install SWI-Prolog
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq swi-prolog-nox
+      - name: Unit tests (core)
+        working-directory: lang/pl
+        run: swipl -q -l test_nn.pl -g run_tests -t halt
+      - name: Unit tests (modules)
+        working-directory: lang/pl
+        run: swipl -q -l test_modules.pl -g run_module_tests -t halt
+      - name: Unit tests (nD / fractal)
+        working-directory: lang/pl
+        run: swipl -q -l test_nd.pl -g run_nd_tests -t halt
+      - name: E2E demos
+        working-directory: lang/pl
+        run: |
+          timeout 300 swipl -q -l demo.pl -g run_all_demos -t halt
+          timeout 300 swipl -q -l demo_modules.pl -g run_all_demos -t halt
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # P-Lingua — structural validation of every .pli source.
+  # ──────────────────────────────────────────────────────────────────────────
+  plingua:
+    needs: changes
+    if: needs.changes.outputs.pli == 'true' || needs.changes.outputs.run_all == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Structural validation
+        run: bash lang/pli/validate.sh
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Raku (Rakudo) — TAP unit tests + demo/example e2e runs.
+  # The Test module exits nonzero on failure or plan mismatch.
+  # ──────────────────────────────────────────────────────────────────────────
+  raku:
+    needs: changes
+    if: needs.changes.outputs.raku == 'true' || needs.changes.outputs.run_all == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Raku/setup-raku@v1
+        with:
+          raku-version: latest
+      - name: Unit tests
+        working-directory: lang/raku
+        run: raku test-nn.raku
+      - name: E2E demo and example
+        working-directory: lang/raku
+        run: |
+          timeout 300 raku demo.raku
+          timeout 300 raku example.raku
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Racket — unit tests + demo/example e2e runs.
+  # ──────────────────────────────────────────────────────────────────────────
+  racket:
+    needs: changes
+    if: needs.changes.outputs.rkt == 'true' || needs.changes.outputs.run_all == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Bogdanp/setup-racket@v1.14
+        with:
+          architecture: x64
+          distribution: minimal
+          variant: CS
+          version: stable
+      - name: Unit tests
+        working-directory: lang/rkt
+        run: racket test-nn.rkt
+      - name: E2E demo and example
+        working-directory: lang/rkt
+        run: |
+          timeout 300 racket demo.rkt
+          timeout 300 racket example.rkt
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Scheme (Guile) — unit tests + demo/example e2e runs.
+  # test-summary calls (exit 1) when any assertion failed.
+  # ──────────────────────────────────────────────────────────────────────────
+  scheme:
+    needs: changes
+    if: needs.changes.outputs.scm == 'true' || needs.changes.outputs.run_all == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Guile
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq guile-3.0
+      - name: Unit tests
+        working-directory: lang/scm
+        run: guile --no-auto-compile -l nn.scm -l test-nn.scm -c '(run-all-tests)'
+      - name: E2E demo and example
+        working-directory: lang/scm
+        run: |
+          timeout 300 guile --no-auto-compile -l nn.scm -l demo.scm -c '(run-all-demos)'
+          timeout 300 guile --no-auto-compile -s example.scm
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Torch/nn Lua sources — syntax check every module without a full Torch
+  # build (the complete nn.test() suite needs a legacy Torch7 distro).
+  # ──────────────────────────────────────────────────────────────────────────
+  lua-syntax:
+    needs: changes
+    if: needs.changes.outputs.lua == 'true' || needs.changes.outputs.run_all == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install LuaJIT
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq luajit
+      - name: Syntax-check all Torch/nn Lua modules
+        run: |
+          fail=0
+          for f in lang/lua/*.lua test/*.lua test/benchmarks/*.lua; do
+            if ! luajit -e "assert(loadfile('$f'))" 2>/tmp/err.log; then
+              echo "SYNTAX ERROR in $f"
+              cat /tmp/err.log
+              fail=1
+            fi
+          done
+          exit $fail
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Docs — strict MkDocs build of the doc/ tree.
+  # ──────────────────────────────────────────────────────────────────────────
+  docs:
+    needs: changes
+    if: needs.changes.outputs.docs == 'true' || needs.changes.outputs.run_all == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install MkDocs
+        run: pip install mkdocs
+      - name: Build docs (strict)
+        run: mkdocs build --strict
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Fan-in gate: single required status check for branch protection.
+  # Succeeds when no needed job failed or was cancelled (skipped is OK).
+  # ──────────────────────────────────────────────────────────────────────────
+  ci-success:
+    if: always()
+    needs:
+      - lint-lua
+      - a9nn
+      - prolog
+      - plingua
+      - raku
+      - racket
+      - scheme
+      - lua-syntax
+      - docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check job results
+        run: |
+          results='${{ join(needs.*.result, ' ') }}'
+          echo "Job results: $results"
+          for r in $results; do
+            if [ "$r" = "failure" ] || [ "$r" = "cancelled" ]; then
+              echo "One or more required jobs failed."
+              exit 1
+            fi
+          done
+          echo "All required jobs succeeded or were skipped."

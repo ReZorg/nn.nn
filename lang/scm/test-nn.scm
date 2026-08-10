@@ -59,7 +59,9 @@
   (display test-failed)
   (newline)
   (display "=====================================")
-  (newline))
+  (newline)
+  (if (> test-failed 0)
+      (exit 1)))
 
 ;;; ============================================================================
 ;;; Tests for Activation Functions
