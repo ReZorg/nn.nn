@@ -201,7 +201,8 @@ sub forward(@input, @weights) is export {
 
 sub forward-with-activations(@input, @weights) is export {
     # Forward propagation that also returns intermediate activations
-    my @all-activations = [@input];
+    my @all-activations;
+    @all-activations.push([@input]);
     my @current = @input;
     
     for @weights -> $layer {
@@ -210,7 +211,7 @@ sub forward-with-activations(@input, @weights) is export {
             my @w = @($neuron<weights>);
             sigmoid(dot-product(@current, @w) + $neuron<bias>)
         }).Array;
-        @all-activations.push(@next);
+        @all-activations.push([@next]);
         @current = @next;
     }
     
@@ -379,11 +380,11 @@ class Sequential does Module is export {
     }
     
     method forward($input) {
-        my $current = $input;
+        my @current = @($input);
         for @.modules -> $module {
-            $current = $module.forward($current);
+            @current = @($module.forward(@current));
         }
-        $current;
+        @current;
     }
     
     method backward($grad-output) {
@@ -495,7 +496,7 @@ sub relu-module() is export {
 sub identity-module() is export {
     # Create an identity module (pass-through)
     class Identity does Module {
-        method forward($input) { $input }
+        method forward($input) { @($input) }
         method backward($grad-output) { $grad-output }
     }.new;
 }
