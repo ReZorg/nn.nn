@@ -70,16 +70,16 @@ definition make_reshape :: "shape \<Rightarrow> module" where
   "make_reshape sh = Reshape sh"
 
 definition make_mean :: "nat \<Rightarrow> module" where
-  "make_mean dim = Mean dim"
+  "make_mean n = Mean n"
 
 definition make_max :: "nat \<Rightarrow> module" where
-  "make_max dim = Max dim"
+  "make_max n = Max n"
 
 definition make_sequential :: "module list \<Rightarrow> module" where
   "make_sequential ms = Sequential ms"
 
 definition make_concat :: "nat \<Rightarrow> module list \<Rightarrow> module" where
-  "make_concat dim ms = Concat dim ms"
+  "make_concat n ms = Concat n ms"
 
 text \<open>
   make-linear: a Linear module with deterministically initialized
