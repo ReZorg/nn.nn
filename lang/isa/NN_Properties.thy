@@ -121,7 +121,7 @@ proof -
     using spos by (intro map_cong) (auto simp: ln_div)
   also have "\<dots> = log_softmax v"
     by (simp add: log_softmax_def Let_def)
-  finally show ?thesis ..
+  finally show ?thesis by (rule sym)
 qed
 
 text \<open>All LogSoftmax outputs are non-positive (log-probabilities).\<close>
@@ -136,8 +136,13 @@ proof -
     by (auto simp: log_softmax_def Let_def)
   have spos: "0 < sum_list ?exps"
     using nonempty by (intro sum_list_pos) auto
-  have "exp x \<le> sum_list ?exps"
-    using x(1) by (intro member_le_sum_list) auto
+  obtain ys zs where split: "?shifted = ys @ x # zs"
+    using split_list[OF x(1)] by blast
+  have "sum_list ?exps = sum_list (map exp ys) + (exp x + sum_list (map exp zs))"
+    by (simp add: split)
+  moreover have "0 \<le> sum_list (map exp ys)" "0 \<le> sum_list (map exp zs)"
+    by (auto intro!: sum_list_nonneg)
+  ultimately have "exp x \<le> sum_list ?exps" by linarith
   then have "x \<le> ln (sum_list ?exps)"
     using spos by (simp add: ln_ge_iff)
   with x(2) show ?thesis by simp
@@ -254,10 +259,12 @@ next
     next
       case (Suc j')
       with 3(5) have jr: "j' < length rest" by simp
-      then have nonnil: "rest ! j' \<noteq> []"
+      then have lenrow: "length (rest ! j') = Suc (length xs)"
         using rows by (auto dest: nth_mem)
+      have bound: "i' < length (tl (rest ! j'))"
+        using lenrow i' by simp
       have "tl (rest ! j') ! i' = rest ! j' ! Suc i'"
-        using nonnil by (simp add: nth_tl)
+        by (rule nth_tl[OF bound])
       with \<open>i = Suc i'\<close> Suc IH jr show ?thesis by simp
     qed
   qed
@@ -449,7 +456,7 @@ qed
 text \<open>AbsCriterion invariant: \<open>loss \<ge> 0\<close>.\<close>
 lemma abs_loss_nonneg: "0 \<le> abs_loss output target"
   unfolding abs_loss_def
-  by (induct "vector_sub output target") (auto intro: sum_list_nonneg)
+  by (auto intro!: sum_list_nonneg)
 
 section \<open>Derivative correctness (integrations.zpp Section 2)\<close>
 
@@ -474,8 +481,8 @@ qed
 text \<open>The claimed tanh derivative is the analytic derivative: \<open>1 - tanh(x)\<^sup>2\<close>.\<close>
 lemma tanh_has_derivative:
   "(tanh_activation has_real_derivative tanh_derivative x) (at x)"
-  using has_field_derivative_tanh[of x, OF cosh_real_nonzero]
-  by (simp add: tanh_activation_def [abs_def] tanh_derivative_def)
+  unfolding tanh_activation_def [abs_def] tanh_derivative_def
+  by (auto intro!: derivative_eq_intros)
 
 text \<open>MSE derivative correctness in the scalar case: \<open>d/dy (y - t)\<^sup>2 = 2 (y - t)\<close>.\<close>
 lemma mse_loss_derivative_correct_1d:

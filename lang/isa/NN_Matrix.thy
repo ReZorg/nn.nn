@@ -28,11 +28,20 @@ text \<open>
   the row count of the transposed matrix, mirroring the sibling
   \<open>(apply map list matrix)\<close> for rectangular matrices.
 \<close>
-fun transpose_matrix :: "mat \<Rightarrow> mat" where
+function transpose_matrix :: "mat \<Rightarrow> mat" where
   "transpose_matrix [] = []"
 | "transpose_matrix ([] # _) = []"
 | "transpose_matrix ((x # xs) # rest) =
      (x # map hd rest) # transpose_matrix (xs # map tl rest)"
+  by pat_completeness auto
+
+text \<open>
+  Each step peels one entry off the first row, so \<open>length (hd m)\<close> is a
+  decreasing measure.  (The default \<open>size\<close> measure does not work here
+  because relating \<open>map tl rest\<close> to \<open>rest\<close> needs an induction.)
+\<close>
+termination transpose_matrix
+  by (relation "measure (\<lambda>m. length (hd m))") auto
 
 lemma transpose_matrix_nil [simp]: "transpose_matrix [] = []"
   by simp
