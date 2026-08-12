@@ -24,6 +24,7 @@ jobs:
       raku: ${{ steps.filter.outputs.raku }}
       rkt: ${{ steps.filter.outputs.rkt }}
       scm: ${{ steps.filter.outputs.scm }}
+      isa: ${{ steps.filter.outputs.isa }}
       docs: ${{ steps.filter.outputs.docs }}
       run_all: ${{ steps.mode.outputs.run_all }}
     steps:
@@ -65,6 +66,9 @@ jobs:
             scm:
               - *ci
               - 'lang/scm/**'
+            isa:
+              - *ci
+              - 'lang/isa/**'
             docs:
               - *ci
               - 'doc/**'
@@ -225,6 +229,40 @@ jobs:
           timeout 300 guile --no-auto-compile -s example.scm
 
   # ──────────────────────────────────────────────────────────────────────────
+  # Isabelle/HOL — build the NN session. The build type-checks the library,
+  # re-runs every proof, discharges the eval-based regression tests and
+  # executes the demos, so a failure of any of those fails the job.
+  # ──────────────────────────────────────────────────────────────────────────
+  isabelle:
+    needs: changes
+    if: needs.changes.outputs.isa == 'true' || needs.changes.outputs.run_all == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      ISABELLE_VERSION: Isabelle2025-2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache Isabelle distribution and heaps
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/isabelle-dist
+            ~/.isabelle
+          key: ${{ runner.os }}-${{ env.ISABELLE_VERSION }}-hol-library
+      - name: Install Isabelle
+        run: |
+          if [ ! -x "$HOME/isabelle-dist/bin/isabelle" ]; then
+            mkdir -p "$HOME/isabelle-dist"
+            curl -fsSL "https://isabelle.in.tum.de/dist/${ISABELLE_VERSION}_linux.tar.gz" \
+              -o /tmp/isabelle.tar.gz
+            tar -xzf /tmp/isabelle.tar.gz -C "$HOME/isabelle-dist" --strip-components=1
+            rm -f /tmp/isabelle.tar.gz
+          fi
+          echo "$HOME/isabelle-dist/bin" >> "$GITHUB_PATH"
+      - name: Build session NN (proofs, tests, demos)
+        run: isabelle build -d lang/isa -v -o document=false NN
+
+  # ──────────────────────────────────────────────────────────────────────────
   # Torch/nn Lua sources — syntax check every module without a full Torch
   # build (the complete nn.test() suite needs a legacy Torch7 distro).
   # ──────────────────────────────────────────────────────────────────────────
@@ -279,6 +317,7 @@ jobs:
       - raku
       - racket
       - scheme
+      - isabelle
       - lua-syntax
       - docs
     runs-on: ubuntu-latest

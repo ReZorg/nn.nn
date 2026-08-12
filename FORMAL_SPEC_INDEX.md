@@ -2,13 +2,14 @@
 
 ## 📋 Quick Start
 
-This repository contains a neural network library with implementations in **Lua/Torch**, **Prolog**, **C**, **PLingua (P-Systems)**, **Racket**, **Scheme**, and **Raku**. The `docs/` directory contains comprehensive formal specifications and architectural documentation.
+This repository contains a neural network library with implementations in **Lua/Torch**, **Prolog**, **C**, **PLingua (P-Systems)**, **Racket**, **Scheme**, **Raku**, and **Isabelle/HOL**. The `docs/` directory contains comprehensive formal specifications and architectural documentation.
 
 **Choose your path:**
 - 🏗️ **Architecture Overview**: Start with [`docs/architecture_overview.md`](docs/architecture_overview.md) for visual diagrams and system design
 - 📐 **Formal Specifications**: Dive into Z++ specs starting with [`docs/data_model.zpp`](docs/data_model.zpp)
 - 📖 **Reading Guide**: See [`docs/README.md`](docs/README.md) for a complete guide
 - 🧫 **Membrane Computing**: See [`lang/pli/README.md`](lang/pli/README.md) for the PLingua (P-Systems) implementation
+- 🔍 **Machine-Checked Proofs**: See [`lang/isa/README.md`](lang/isa/README.md) for the Isabelle/HOL implementation, where the invariants below are proved rather than tested
 
 ## 📚 Documentation Overview
 
@@ -133,7 +134,7 @@ This repository contains a neural network library with implementations in **Lua/
 
 ### For Researchers
 - **Understanding design**: Study `architecture_overview.md`
-- **Formal verification**: Use Z++ specs for theorem proving
+- **Formal verification**: Use Z++ specs for theorem proving — the Isabelle/HOL port in [`lang/isa/`](lang/isa/README.md) already mechanizes the invariants of `data_model.zpp`, `operations.zpp`, `system_state.zpp` and `integrations.zpp`
 - **Property checking**: Validate invariants hold
 - **Algorithm analysis**: Trace operations through specs
 
@@ -205,6 +206,7 @@ See `COPYRIGHT.txt` in the repository root.
 ## 🔍 Related Documentation
 
 - **README_PROLOG.md**: Prolog implementation guide
+- **lang/isa/README.md**: Isabelle/HOL implementation guide (machine-checked invariants)
 - **IMPLEMENTATION_SUMMARY.md**: Implementation details
 - **CONTRIBUTING.md**: Contribution guidelines
 - **doc/**: Original Torch/nn documentation

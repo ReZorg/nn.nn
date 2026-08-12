@@ -32,6 +32,7 @@ Every implementation in this repository is exercised by [GitHub Actions](.github
 | Raku | `cd lang/raku && raku test-nn.raku` | `raku demo.raku`, `raku example.raku` |
 | Racket | `cd lang/rkt && racket test-nn.rkt` | `racket demo.rkt`, `racket example.rkt` |
 | Scheme (Guile) | `cd lang/scm && guile --no-auto-compile -l nn.scm -l test-nn.scm -c '(run-all-tests)'` | `guile --no-auto-compile -l nn.scm -l demo.scm -c '(run-all-demos)'` |
+| Isabelle/HOL | `isabelle build -d lang/isa -v NN` (the build re-runs every proof and every `eval`-based test) | Demos and examples run as part of the same build |
 | Torch/nn (Lua) | Requires a full [Torch7](https://github.com/torch/distro) install: `luarocks make rocks/nn-scm-1.rockspec` then `lua -lnn -e "nn.test()"` (CI performs a syntax check of all modules) | — |
 
 Lint Lua sources with `luacheck lang/lua lang/a9nn` and build the docs with `mkdocs build --strict`.
