@@ -253,8 +253,15 @@ jobs:
         run: |
           if [ ! -x "$HOME/isabelle-dist/bin/isabelle" ]; then
             mkdir -p "$HOME/isabelle-dist"
-            curl -fsSL "https://isabelle.in.tum.de/dist/${ISABELLE_VERSION}_linux.tar.gz" \
-              -o /tmp/isabelle.tar.gz
+            for url in \
+              "https://isabelle.in.tum.de/dist/${ISABELLE_VERSION}_linux.tar.gz" \
+              "https://www.cl.cam.ac.uk/research/hvg/Isabelle/dist/${ISABELLE_VERSION}_linux.tar.gz"; do
+              if curl -fL --retry 5 --retry-all-errors --connect-timeout 30 "$url" \
+                -o /tmp/isabelle.tar.gz; then
+                break
+              fi
+            done
+            [ -s /tmp/isabelle.tar.gz ]
             tar -xzf /tmp/isabelle.tar.gz -C "$HOME/isabelle-dist" --strip-components=1
             rm -f /tmp/isabelle.tar.gz
           fi
