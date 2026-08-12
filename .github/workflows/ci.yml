@@ -250,22 +250,7 @@ jobs:
             ~/.isabelle
           key: ${{ runner.os }}-${{ env.ISABELLE_VERSION }}-hol-library
       - name: Install Isabelle
-        run: |
-          if [ ! -x "$HOME/isabelle-dist/bin/isabelle" ]; then
-            mkdir -p "$HOME/isabelle-dist"
-            for url in \
-              "https://isabelle.in.tum.de/dist/${ISABELLE_VERSION}_linux.tar.gz" \
-              "https://www.cl.cam.ac.uk/research/hvg/Isabelle/dist/${ISABELLE_VERSION}_linux.tar.gz"; do
-              if curl -fL --retry 5 --retry-all-errors --connect-timeout 30 "$url" \
-                -o /tmp/isabelle.tar.gz; then
-                break
-              fi
-            done
-            [ -s /tmp/isabelle.tar.gz ]
-            tar -xzf /tmp/isabelle.tar.gz -C "$HOME/isabelle-dist" --strip-components=1
-            rm -f /tmp/isabelle.tar.gz
-          fi
-          echo "$HOME/isabelle-dist/bin" >> "$GITHUB_PATH"
+        run: bash lang/isa/install-isabelle.sh
       - name: Build session NN (proofs, tests, demos)
         run: isabelle build -d lang/isa -v -o document=false NN
 

@@ -46,6 +46,27 @@ function for function.
   and no add-on components are required
 - The session builds on `HOL-Library`, which ships with the distribution
 
+### Installing Isabelle (CI / fresh machines)
+
+The official `isabelle.in.tum.de` download redirects to
+`dist.isabelle.cit.tum.de`, which is not always reachable from CI. Prefer the
+helper script, which tries durable HTTPS mirrors first, verifies the tarball
+SHA-256, and unpacks into `~/isabelle-dist`:
+
+```bash
+# from the repository root
+bash lang/isa/install-isabelle.sh
+export PATH="$HOME/isabelle-dist/bin:$PATH"
+```
+
+The ~1.1 GiB Linux distribution is **not** stored in git (it would dominate
+the clone). GitHub Actions caches `~/isabelle-dist` so a cold download only
+happens when the cache key changes. To reuse a local archive:
+
+```bash
+ISABELLE_TARBALL=/path/to/Isabelle2025-2_linux.tar.gz bash lang/isa/install-isabelle.sh
+```
+
 ## Quick start
 
 ```bash

@@ -37,7 +37,7 @@ fun random_weights :: "nat \<Rightarrow> nat \<Rightarrow> vec \<times> nat" whe
 
 lemma length_random_weights [simp]:
   "length (fst (random_weights n s)) = n"
-  by (induct n arbitrary: s) (auto simp: Let_def split: prod.splits)
+  by (induct n arbitrary: s) (simp_all add: Let_def case_prod_beta)
 
 lemma random_weight_range: "-1/2 \<le> random_weight s \<and> random_weight s < 1/2"
   by (simp add: random_weight_def lcg_real_def)

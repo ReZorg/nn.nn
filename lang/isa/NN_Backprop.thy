@@ -29,7 +29,26 @@ lemma length_compute_layer_activations [simp]:
 text \<open>The last cached activation is the network output.\<close>
 lemma last_compute_layer_activations:
   "last (compute_layer_activations input ws) = forward_propagate input ws"
-  by (induct ws arbitrary: input) auto
+proof (induct ws arbitrary: input)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons l ls)
+  let ?input' = "layer_output l input sigmoid_safe"
+  let ?acts = "compute_layer_activations ?input' ls"
+  have ih: "last ?acts = forward_propagate ?input' ls"
+    by (rule Cons.hyps)
+  have "length ?acts = Suc (length ls)"
+    by (rule length_compute_layer_activations)
+  then obtain a as where acts_cons: "?acts = a # as"
+    by (cases ?acts) auto
+  have "last (compute_layer_activations input (l # ls)) = last ?acts"
+    by (simp add: acts_cons)
+  also have "\<dots> = forward_propagate ?input' ls"
+    by (rule ih)
+  also have "\<dots> = forward_propagate input (l # ls)" by simp
+  finally show ?case .
+qed
 
 section \<open>SGD weight update (operations.zpp Section 4, SGDUpdate)\<close>
 
