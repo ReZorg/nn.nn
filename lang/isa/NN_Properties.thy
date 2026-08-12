@@ -13,23 +13,35 @@ section \<open>Activation ranges (data_model.zpp Section 7)\<close>
 
 text \<open>SigmoidModule invariant: \<open>\<forall>i. 0 < output\<^sub>i < 1\<close>.\<close>
 lemma sigmoid_range: "0 < sigmoid x \<and> sigmoid x < 1"
-proof -
-  have pos: "0 < 1 + exp (- x)"
+proof (intro conjI)
+  have den_pos: "0 < 1 + exp (- x)"
     by (simp add: add_pos_pos)
-  have "1 < 1 + exp (- x)"
-    by simp
-  with pos show ?thesis
+  show "0 < sigmoid x"
+    unfolding sigmoid_def using den_pos by simp
+  have "1 - 1 / (1 + exp (- x)) = exp (- x) / (1 + exp (- x))"
+    using den_pos by (simp add: field_simps)
+  moreover have "0 < exp (- x) / (1 + exp (- x))"
+    using den_pos by (simp add: divide_pos_pos)
+  ultimately have "1 / (1 + exp (- x)) < 1"
+    by linarith
+  thus "sigmoid x < 1"
     by (simp add: sigmoid_def)
 qed
 
 text \<open>The clamped executable variant satisfies the same invariant.\<close>
 lemma sigmoid_safe_range: "0 < sigmoid_safe x \<and> sigmoid_safe x < 1"
-proof -
-  have pos: "0 < 1 + exp_safe (- x)"
+proof (intro conjI)
+  have den_pos: "0 < 1 + exp_safe (- x)"
     using exp_safe_pos[of "- x"] by simp
-  have "1 < 1 + exp_safe (- x)"
-    using exp_safe_pos[of "- x"] by simp
-  with pos show ?thesis
+  show "0 < sigmoid_safe x"
+    unfolding sigmoid_safe_def using den_pos by simp
+  have "1 - 1 / (1 + exp_safe (- x)) = exp_safe (- x) / (1 + exp_safe (- x))"
+    using den_pos by (simp add: field_simps)
+  moreover have "0 < exp_safe (- x) / (1 + exp_safe (- x))"
+    using den_pos exp_safe_pos[of "- x"] by (simp add: divide_pos_pos)
+  ultimately have "1 / (1 + exp_safe (- x)) < 1"
+    by linarith
+  thus "sigmoid_safe x < 1"
     by (simp add: sigmoid_safe_def)
 qed
 
@@ -95,14 +107,21 @@ lemma softmax_sums_to_one:
   assumes "v \<noteq> []"
   shows "sum_list (softmax v) = 1"
 proof -
-  let ?shifted = "map (\<lambda>x. x - vector_max v) v"
-  let ?exps = "map exp ?shifted"
-  have "?exps \<noteq> []" using assms by simp
-  moreover have "\<forall>x \<in> set ?exps. 0 < x" by auto
-  ultimately have spos: "0 < sum_list ?exps" by (rule sum_list_pos)
-  have "sum_list (softmax v) = sum_list ?exps / sum_list ?exps"
-    by (simp add: softmax_def Let_def sum_list_map_divide)
-  with spos show ?thesis by simp
+  define mx where "mx = vector_max v"
+  define shifted where "shifted = map (\<lambda>x. x - mx) v"
+  define exps where "exps = map exp shifted"
+  have "exps \<noteq> []" using assms by (simp add: exps_def shifted_def)
+  moreover have "\<forall>x \<in> set exps. 0 < x" by (auto simp: exps_def)
+  ultimately have spos: "0 < sum_list exps" by (rule sum_list_pos)
+  have "softmax v = map (\<lambda>e. e / sum_list exps) exps"
+    by (simp add: softmax_def Let_def mx_def shifted_def exps_def)
+  then have "sum_list (softmax v) = sum_list (map (\<lambda>e. e / sum_list exps) exps)"
+    by simp
+  also have "\<dots> = sum_list exps / sum_list exps"
+    by (rule sum_list_map_divide)
+  also have "\<dots> = 1"
+    using spos by simp
+  finally show ?thesis .
 qed
 
 text \<open>LogSoftmax is the logarithm of Softmax.\<close>
@@ -154,7 +173,13 @@ text \<open>Dot product is commutative.\<close>
 lemma dot_product_comm: "dot_product v1 v2 = dot_product v2 v1"
 proof -
   have "map2 (*) v1 v2 = map2 (*) v2 v1"
-    by (induct v1 arbitrary: v2) (auto simp: mult.commute split: list.splits)
+  proof (induct v1 arbitrary: v2)
+    case Nil
+    then show ?case by simp
+  next
+    case (Cons x xs)
+    then show ?case by (cases v2) (auto simp: mult.commute)
+  qed
   then show ?thesis by (simp add: dot_product_def)
 qed
 
@@ -238,10 +263,12 @@ next
     next
       case (Suc j')
       with 3(5) have j': "j' < length rest" by simp
-      then have "rest ! j' \<noteq> []"
-        using rows by (auto dest: nth_mem)
+      have lenj: "length (rest ! j') = Suc (length xs)"
+        using rows j' by (auto dest: nth_mem)
+      then obtain r0 rs where "rest ! j' = r0 # rs"
+        by (cases "rest ! j'") auto
       then have "hd (rest ! j') = rest ! j' ! 0"
-        by (simp add: hd_conv_nth)
+        by simp
       with \<open>i = 0\<close> Suc j' show ?thesis by simp
     qed
   next
@@ -432,10 +459,12 @@ proof
       show "length output = length target" by (fact assms)
     next
       fix i assume i: "i < length output"
-      with assms have "vector_sub output target ! i = output ! i - target ! i"
+      have len_sub: "length (vector_sub output target) = length output"
+        using assms by (simp add: vector_sub_def)
+      with assms i have "vector_sub output target ! i = output ! i - target ! i"
         by (simp add: vector_sub_def)
       moreover have "vector_sub output target ! i \<in> set (vector_sub output target)"
-        using i assms by (auto simp: vector_sub_def)
+        using i len_sub by (simp add: nth_mem)
       ultimately show "output ! i = target ! i"
         using allzero by auto
     qed
@@ -444,9 +473,11 @@ proof
     with assms show "output = target" by simp
   qed
 next
-  assume "output = target"
-  then have "vector_sub output target = map (\<lambda>_. 0) output"
-    by (induct output arbitrary: target) (auto simp: vector_sub_def)
+  assume eq: "output = target"
+  have zeros: "map2 (-) xs xs = map (\<lambda>_. 0) xs" for xs :: "real list"
+    by (induct xs) auto
+  have "vector_sub output target = map (\<lambda>_. 0) output"
+    using eq by (simp add: vector_sub_def zeros)
   moreover have "dot_product (map (\<lambda>_. 0) output) (map (\<lambda>_. 0) output) = 0"
     by (simp add: dot_product_self_zero_iff)
   ultimately show "mse_loss output target = 0"
