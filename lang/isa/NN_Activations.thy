@@ -4,8 +4,8 @@
     contracts).
 
     All functions are defined over exact reals; executability for demos
-    is provided in the test/demo theories via
-    HOL-Library.Code_Real_Approx_By_Float.
+    and tests is provided by the exact-rational approximation layer in
+    NN_Exec (keeping the proof theories float-free).
 *)
 
 theory NN_Activations
