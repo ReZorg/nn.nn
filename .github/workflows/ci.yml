@@ -12,6 +12,12 @@ on:
 permissions:
   contents: read
 
+# Use pipefail so a failing test command piped through `tee` (for log capture)
+# still fails the step.
+defaults:
+  run:
+    shell: bash -e -o pipefail {0}
+
 jobs:
   # ──────────────────────────────────────────────────────────────────────────
   # Detect which language subtrees changed so PR builds only run what matters.
