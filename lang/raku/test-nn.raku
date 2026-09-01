@@ -7,7 +7,7 @@ use lib '.';
 use NN;
 use Test;
 
-plan 36;
+plan 34;
 
 # ============================================================================
 # Test 1: Random Number Generation
@@ -267,7 +267,8 @@ subtest "Training Epoch" => {
     plan 2;
     
     my @weights = init-weights([2, 2, 1]);
-    my @training-data = [make-sample([0.0, 0.0], [0.0])];
+    # Itemize the sample hash so a lone sample is not flattened into Pairs
+    my @training-data = [$( make-sample([0.0, 0.0], [0.0]) )];
     my @new-weights = train-epoch(@training-data, @weights, 0.1);
     
     ok @new-weights.defined, "training epoch produces new weights";
