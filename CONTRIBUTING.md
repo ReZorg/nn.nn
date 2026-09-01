@@ -134,3 +134,24 @@ license your work under the terms of the BSD License.
 * While you are changing lua files, one can simply symlink the cloned nn directory to ~/torch/install/share/lua/5.1/nn so that any change is reflected in the current install, without constantly having to do luarocks make rocks/*
 * If you are changing C files, then, after every change, you run luarocks make rocks/*
 * To test, you can just use: th -lnn -e "nn.test()"
+
+## Running the multi-language test suites
+
+This repository hosts several ports of the library under `lang/`. The same
+commands that CI runs (see `.github/workflows/ci.yml`) can be run locally:
+
+| Implementation | Unit tests |
+|---|---|
+| a9nn (pure Lua) | `cd lang/a9nn && lua run_tests.lua` |
+| Prolog | `cd lang/pl && swipl -q -l test_nn.pl -g run_tests -t halt` (also `test_modules.pl`/`run_module_tests`, `test_nd.pl`/`run_nd_tests`, `test_consistency.pl`/`run_consistency_tests`) |
+| P-Lingua | `bash lang/pli/validate.sh` |
+| Raku | `cd lang/raku && raku test-nn.raku` |
+| Racket | `cd lang/rkt && racket test-nn.rkt` |
+| Scheme (Guile) | `cd lang/scm && guile --no-auto-compile -l nn.scm -l test-nn.scm -c '(run-all-tests)'` |
+| Isabelle/HOL | `isabelle build -d lang/isa -v NN` |
+| THNN (C backend) | `bash lang/c/THNN/check.sh` |
+
+Every suite exits nonzero on failure so CI can catch regressions. The
+cross-implementation consistency fixture (`docs/fixtures/xor_fixture.json`) is
+checked by each port — if you change forward/loss semantics, update the fixture
+and every port's consistency check together.
