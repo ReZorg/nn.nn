@@ -31,8 +31,10 @@ local ok1 = runSuite("test/test_basic.lua",    "Core NN modules")
 print()
 local ok2 = runSuite("test/test_cognitive.lua", "Cognitive agents")
 print()
+local ok3 = runSuite("test/test_consistency.lua", "Cross-implementation consistency")
+print()
 
-if ok1 and ok2 then
+if ok1 and ok2 and ok3 then
    print("All suites completed successfully.")
 else
    print("Some suites had errors.")

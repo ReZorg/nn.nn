@@ -341,11 +341,14 @@ print("Active LLaMA instances:", hw.llama.available)
 cd lang/a9nn
 lua run_tests.lua           # all suites
 
-lua test/test_basic.lua     # core NN modules only
-lua test/test_cognitive.lua # cognitive agent tests only
+lua test/test_basic.lua        # core NN modules only
+lua test/test_cognitive.lua    # cognitive agent tests only
+lua test/test_consistency.lua  # cross-implementation consistency fixture
 ```
 
-Expected output: all tests pass with `✓`.
+Expected output: all tests pass with `✓`. The consistency suite checks the
+shared fixture in `docs/fixtures/xor_fixture.json`, which every other port
+(scm, rkt, raku, pl, isa) checks identically.
 
 ---
 
@@ -389,8 +392,9 @@ lang/a9nn/
 │
 ├── run_tests.lua          Test runner
 ├── test/
-│   ├── test_basic.lua     Core NN tests
-│   └── test_cognitive.lua Cognitive module tests
+│   ├── test_basic.lua        Core NN tests
+│   ├── test_cognitive.lua    Cognitive module tests
+│   └── test_consistency.lua  Cross-implementation consistency fixture
 └── examples/
     ├── mlp_example.lua          MLP sin regression
     ├── nnecco_example.lua       NNECCO full demo

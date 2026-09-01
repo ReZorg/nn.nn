@@ -437,6 +437,91 @@ test("multi-instance orchestration (4 instances)", function()
    assert(served == 8, "Expected 8 requests total, got " .. served)
 end)
 
+-- ── Edge cases ────────────────────────────────────────────────────────────────
+print("\n[Edge cases]")
+
+test("EchoReservoir rejects dimension mismatch", function()
+   local r = nn.EchoReservoir(4, 10)
+   local bad = Tensor.new({1, 2, 3})  -- 3 elements, expected 4
+   local ok, err = pcall(function() r:forward(bad) end)
+   assert(not ok, "Expected dimension-mismatch error")
+end)
+
+test("EchoReservoir zero-input keeps finite state", function()
+   local r = nn.EchoReservoir(2, 15)
+   local zero = Tensor.new({0, 0})
+   for _ = 1, 10 do r:forward(zero) end
+   local n = r.state:norm()
+   assert(n == n, "state norm is NaN")        -- NaN check
+   assert(n < math.huge, "state norm is inf") -- inf check
+end)
+
+test("AtomSpace getNode on missing atom returns nil", function()
+   local as = nn.AtomSpace()
+   assert(as:getNode("ConceptNode", "does_not_exist") == nil)
+end)
+
+test("AtomSpace empty type query returns empty list", function()
+   local as = nn.AtomSpace()
+   as:addNode("ConceptNode", "only_one")
+   local nums = as:getAtomsOfType("NumberNode")
+   assert(#nums == 0)
+end)
+
+test("AtomSpace getIncoming on isolated atom is empty", function()
+   local as = nn.AtomSpace()
+   local a  = as:addNode("ConceptNode", "lonely")
+   assert(#as:getIncoming(a) == 0)
+end)
+
+test("Personality unknown trait returns nil (no stored value)", function()
+   local p = nn.Personality()
+   -- An unregistered trait name has no tensor slot; get yields nil.
+   assert(p:get("nonexistent_trait") == nil)
+end)
+
+test("Personality blend size mismatch raises error", function()
+   local p1 = nn.Personality()
+   local p2 = nn.Personality()
+   p2.n = p1.n + 1  -- force a trait-count mismatch
+   local ok = pcall(function() p1:blend(p2, 0.5) end)
+   assert(not ok, "Expected blend mismatch error")
+end)
+
+test("EpisodicMemory sample on empty memory raises error", function()
+   local m = nn.EpisodicMemory(10, false)
+   local ok = pcall(function() m:sample(3) end)
+   assert(not ok, "Expected empty-buffer error")
+end)
+
+test("EpisodicMemory recent on empty memory is empty", function()
+   local m = nn.EpisodicMemory(10, false)
+   assert(#m:recent(5) == 0)
+end)
+
+test("EpisodicMemory recent clamps to available count", function()
+   local m = nn.EpisodicMemory(100, false)
+   for i = 1, 4 do
+      m:push({state=Tensor.new({i}), action=1, reward=i, nextState=Tensor.new({0}), done=false})
+   end
+   local r = m:recent(10)  -- ask for more than available
+   assert(#r == 4, "Expected 4 (clamped), got " .. #r)
+end)
+
+test("Linear forward rejects wrong input size", function()
+   local lin = nn.Linear(5, 3)
+   local ok = pcall(function() lin:forward(Tensor.new({1, 2})) end)
+   assert(not ok, "Expected Linear dimension-mismatch error")
+end)
+
+test("MSECriterion rejects input/target size mismatch", function()
+   local c = nn.MSECriterion()
+   local ok = pcall(function()
+      c:forward(Tensor.new({1, 2}), Tensor.new({1, 2, 3}))
+   end)
+   assert(not ok, "Expected MSE size-mismatch error")
+end)
+
 -- ─────────────────────────────────────────────────────────────────────────────
 print(string.format("\n─── Results: %d passed, %d failed ───\n", passed, failed))
 

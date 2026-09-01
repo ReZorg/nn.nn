@@ -8,3 +8,6 @@ THNN_h.lua
 
 # Raku precompiled files
 .precomp/
+
+# MkDocs build output (mkdocs build)
+site/

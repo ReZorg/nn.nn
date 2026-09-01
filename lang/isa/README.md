@@ -105,6 +105,7 @@ isabelle jedit -d lang/isa -l HOL-Library lang/isa/NN_Examples.thy
 | [`NN_Exec.thy`](NN_Exec.thy) | executable `_exec` mirrors over exact rationals | `integrations.zpp` §6 |
 | [`NN.thy`](NN.thy) | umbrella theory: importing it gives the whole library | — |
 | [`NN_Test.thy`](NN_Test.thy) | the sibling regression suite as `by eval` lemmas | sibling test suites |
+| [`NN_Consistency.thy`](NN_Consistency.thy) | cross-implementation consistency fixture as `by eval` lemmas | `docs/fixtures/xor_fixture.json` |
 | [`NN_Demo.thy`](NN_Demo.thy) | the sibling demos as `value` commands | `lang/scm/demo.scm` |
 | [`NN_Examples.thy`](NN_Examples.thy) | the sibling quick-start tour | `lang/scm/example.scm` |
 
@@ -206,6 +207,17 @@ lemma test_softmax_sums_universal: "∀v. v ≠ [] ⟶ sum_list (softmax v) = 1"
 
 A failing test is a failing build — there is no separate runner and no way
 for a failure to be reported but ignored.
+
+### Cross-implementation consistency
+
+`NN_Consistency.thy` builds the fixed 2-2-1 sigmoid MLP from
+[`docs/fixtures/xor_fixture.json`](../docs/fixtures/xor_fixture.json) — the
+same fixture every sibling port checks — and asserts the forward output and
+MSE loss as `by eval` lemmas against the exact-rational executable mirror
+(`NN_Exec`). Because the mirror's truncated-series sigmoid is accurate to
+~10⁻¹⁰, the fixture's `tolerance_isa` (10⁻³) holds with a wide margin.  This
+makes the Isabelle build a participant in the cross-port agreement check: if
+any port drifts from the shared reference, CI fails.
 
 ## Running the demos
 

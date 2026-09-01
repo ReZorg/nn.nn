@@ -5,9 +5,18 @@ on:
     branches: [main, master]
   pull_request:
   workflow_dispatch:
+  # Nightly run so the best-effort legacy Torch7 full-suite job stays warm.
+  schedule:
+    - cron: '0 3 * * *'
 
 permissions:
   contents: read
+
+# Use pipefail so a failing test command piped through `tee` (for log capture)
+# still fails the step.
+defaults:
+  run:
+    shell: bash -e -o pipefail {0}
 
 jobs:
   # ──────────────────────────────────────────────────────────────────────────
@@ -25,6 +34,7 @@ jobs:
       rkt: ${{ steps.filter.outputs.rkt }}
       scm: ${{ steps.filter.outputs.scm }}
       isa: ${{ steps.filter.outputs.isa }}
+      thnn: ${{ steps.filter.outputs.thnn }}
       docs: ${{ steps.filter.outputs.docs }}
       run_all: ${{ steps.mode.outputs.run_all }}
     steps:
@@ -69,6 +79,9 @@ jobs:
             isa:
               - *ci
               - 'lang/isa/**'
+            thnn:
+              - *ci
+              - 'lang/c/**'
             docs:
               - *ci
               - 'doc/**'
@@ -113,14 +126,33 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y -qq ${{ matrix.lua }}
       - name: Unit tests
         working-directory: lang/a9nn
-        run: ${{ matrix.lua }} run_tests.lua
+        run: |
+          mkdir -p "$RUNNER_TEMP/logs"
+          ${{ matrix.lua }} run_tests.lua 2>&1 | tee "$RUNNER_TEMP/logs/a9nn-unit-${{ matrix.lua }}.log"
       - name: E2E examples
         working-directory: lang/a9nn
         run: |
           for example in examples/*.lua; do
             echo "── Running $example ──"
             timeout 300 ${{ matrix.lua }} "$example"
-          done
+          done 2>&1 | tee "$RUNNER_TEMP/logs/a9nn-e2e-${{ matrix.lua }}.log"
+      - name: Step summary
+        if: always()
+        run: |
+          {
+            echo "### a9nn (${{ matrix.lua }})"
+            echo ''
+            echo '```'
+            grep -hE 'Results:|All suites' "$RUNNER_TEMP/logs/"a9nn-*-${{ matrix.lua }}.log || echo 'no summary captured'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a9nn-logs-${{ matrix.lua }}
+          path: ${{ runner.temp }}/logs
+          if-no-files-found: ignore
 
   # ──────────────────────────────────────────────────────────────────────────
   # Prolog (SWI-Prolog) — unit tests + demo e2e runs.
@@ -143,11 +175,26 @@ jobs:
       - name: Unit tests (nD / fractal)
         working-directory: lang/pl
         run: swipl -q -l test_nd.pl -g run_nd_tests -t halt
+      - name: Cross-implementation consistency
+        working-directory: lang/pl
+        run: swipl -q -l test_consistency.pl -g run_consistency_tests -t halt
       - name: E2E demos
         working-directory: lang/pl
         run: |
           timeout 300 swipl -q -l demo.pl -g run_all_demos -t halt
           timeout 300 swipl -q -l demo_modules.pl -g run_all_demos -t halt
+      - name: Step summary
+        if: always()
+        run: |
+          {
+            echo "### Prolog"
+            echo ''
+            echo "- unit tests: core, modules, nD/fractal"
+            echo "- cross-implementation consistency (xor_fixture)"
+            echo "- e2e demos: demo.pl, demo_modules.pl"
+            echo ''
+            echo "Result: **${{ job.status }}**"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # ──────────────────────────────────────────────────────────────────────────
   # P-Lingua — structural validation of every .pli source.
@@ -176,12 +223,32 @@ jobs:
           raku-version: latest
       - name: Unit tests
         working-directory: lang/raku
-        run: raku test-nn.raku
+        run: |
+          mkdir -p "$RUNNER_TEMP/logs"
+          raku test-nn.raku 2>&1 | tee "$RUNNER_TEMP/logs/raku-unit.log"
       - name: E2E demo and example
         working-directory: lang/raku
         run: |
           timeout 300 raku demo.raku
           timeout 300 raku example.raku
+      - name: Step summary
+        if: always()
+        run: |
+          {
+            echo "### Raku"
+            echo ''
+            echo '```'
+            grep -E '^(ok|not ok|# Subtest)' "$RUNNER_TEMP/logs/raku-unit.log" | tail -5 || echo 'no TAP tail'
+            echo '```'
+            echo "Result: **${{ job.status }}**"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: raku-logs
+          path: ${{ runner.temp }}/logs
+          if-no-files-found: ignore
 
   # ──────────────────────────────────────────────────────────────────────────
   # Racket — unit tests + demo/example e2e runs.
@@ -200,12 +267,32 @@ jobs:
           version: stable
       - name: Unit tests
         working-directory: lang/rkt
-        run: racket test-nn.rkt
+        run: |
+          mkdir -p "$RUNNER_TEMP/logs"
+          racket test-nn.rkt 2>&1 | tee "$RUNNER_TEMP/logs/racket-unit.log"
       - name: E2E demo and example
         working-directory: lang/rkt
         run: |
           timeout 300 racket demo.rkt
           timeout 300 racket example.rkt
+      - name: Step summary
+        if: always()
+        run: |
+          {
+            echo "### Racket"
+            echo ''
+            echo '```'
+            grep -E 'Test Results:|SUCCESS|FAILED' "$RUNNER_TEMP/logs/racket-unit.log" || echo 'no summary captured'
+            echo '```'
+            echo "Result: **${{ job.status }}**"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: racket-logs
+          path: ${{ runner.temp }}/logs
+          if-no-files-found: ignore
 
   # ──────────────────────────────────────────────────────────────────────────
   # Scheme (Guile) — unit tests + demo/example e2e runs.
@@ -221,12 +308,33 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y -qq guile-3.0
       - name: Unit tests
         working-directory: lang/scm
-        run: guile --no-auto-compile -l nn.scm -l test-nn.scm -c '(run-all-tests)'
+        run: |
+          mkdir -p "$RUNNER_TEMP/logs"
+          guile --no-auto-compile -l nn.scm -l test-nn.scm -c '(run-all-tests)' \
+            2>&1 | tee "$RUNNER_TEMP/logs/scheme-unit.log"
       - name: E2E demo and example
         working-directory: lang/scm
         run: |
           timeout 300 guile --no-auto-compile -l nn.scm -l demo.scm -c '(run-all-demos)'
           timeout 300 guile --no-auto-compile -s example.scm
+      - name: Step summary
+        if: always()
+        run: |
+          {
+            echo "### Scheme (Guile)"
+            echo ''
+            echo '```'
+            grep -E 'Total:|Passed:|Failed:' "$RUNNER_TEMP/logs/scheme-unit.log" || echo 'no summary captured'
+            echo '```'
+            echo "Result: **${{ job.status }}**"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scheme-logs
+          path: ${{ runner.temp }}/logs
+          if-no-files-found: ignore
 
   # ──────────────────────────────────────────────────────────────────────────
   # Isabelle/HOL — build the NN session. The build type-checks the library,
@@ -252,7 +360,30 @@ jobs:
       - name: Install Isabelle
         run: bash lang/isa/install-isabelle.sh
       - name: Build session NN (proofs, tests, demos)
-        run: isabelle build -d lang/isa -v -o document=false NN
+        run: |
+          mkdir -p "$RUNNER_TEMP/logs"
+          isabelle build -d lang/isa -v -o document=false NN \
+            2>&1 | tee "$RUNNER_TEMP/logs/isabelle-build.log"
+      - name: Step summary
+        if: always()
+        run: |
+          {
+            echo "### Isabelle/HOL"
+            echo ''
+            echo 'Session `NN` build (proofs + eval tests + demos + consistency).'
+            echo ''
+            echo '```'
+            grep -E 'Timing|Finished|Building|NN_' "$RUNNER_TEMP/logs/isabelle-build.log" | tail -12 || echo 'no log tail'
+            echo '```'
+            echo "Result: **${{ job.status }}**"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: isabelle-build-log
+          path: ${{ runner.temp }}/logs
+          if-no-files-found: ignore
 
   # ──────────────────────────────────────────────────────────────────────────
   # Torch/nn Lua sources — syntax check every module without a full Torch
@@ -277,6 +408,70 @@ jobs:
             fi
           done
           exit $fail
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # THNN C backend — dependency-free structural smoke check of every source
+  # file.  A full compile needs the Torch7 TH headers/build system, which is
+  # too fragile for per-PR CI; the opt-in nightly torch-legacy job below
+  # attempts the real build.
+  # ──────────────────────────────────────────────────────────────────────────
+  thnn:
+    needs: changes
+    if: needs.changes.outputs.thnn == 'true' || needs.changes.outputs.run_all == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Structural smoke check
+        run: |
+          mkdir -p "$RUNNER_TEMP/logs"
+          bash lang/c/THNN/check.sh 2>&1 | tee "$RUNNER_TEMP/logs/thnn-check.log"
+      - name: Step summary
+        if: always()
+        run: |
+          {
+            echo "### THNN (C backend)"
+            echo ''
+            echo '```'
+            cat "$RUNNER_TEMP/logs/thnn-check.log" || echo 'no log captured'
+            echo '```'
+            echo "Result: **${{ job.status }}**"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Legacy Torch/nn full suite (best-effort).  Torch7 is long unmaintained and
+  # hard to build, so this runs only on the nightly schedule and on manual
+  # dispatch, and is allowed to fail without blocking the pipeline.
+  # ──────────────────────────────────────────────────────────────────────────
+  torch-legacy:
+    # Only run on schedule / manual dispatch — never on PRs or pushes.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache Torch7 distro
+        uses: actions/cache@v4
+        with:
+          path: ~/torch
+          key: ${{ runner.os }}-torch7-distro
+      - name: Install build prerequisites
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq build-essential cmake git curl \
+            libreadline-dev libopenblas-dev
+      - name: Build Torch7 distro (best-effort)
+        run: |
+          if [ ! -x "$HOME/torch/install/bin/luarocks" ]; then
+            git clone --depth 1 https://github.com/torch/distro.git ~/torch
+            (cd ~/torch && bash install-deps || true)
+            (cd ~/torch && ./install.sh -b || true)
+          fi
+      - name: Build nn and run test suite (best-effort)
+        run: |
+          . ~/torch/install/bin/torch-activate
+          luarocks make rocks/nn-scm-1.rockspec
+          luajit -lnn -e "nn.test()"
 
   # ──────────────────────────────────────────────────────────────────────────
   # Docs — strict MkDocs build of the doc/ tree.
@@ -311,6 +506,7 @@ jobs:
       - scheme
       - isabelle
       - lua-syntax
+      - thnn
       - docs
     runs-on: ubuntu-latest
     steps:
