@@ -277,6 +277,54 @@
                 "Final output should be in sigmoid range")))
 
 ;;; ============================================================================
+;;; Cross-Implementation Consistency (docs/fixtures/xor_fixture.json)
+;;; ============================================================================
+;;;
+;;; Builds the fixed 2-2-1 sigmoid MLP shared with every other port and
+;;; asserts the forward output and MSE loss to a tight tolerance, guaranteeing
+;;; all implementations agree numerically on one deterministic fixture.
+
+(define fixture-tolerance 1e-6)
+
+;;; weights[layer][neuron] = (neuron (w...) b), mirroring the JSON fixture.
+(define fixture-weights
+  (list
+    (list
+      (list 'neuron (list 0.5 -0.5) 0.1)
+      (list 'neuron (list -0.25 0.75) -0.2))
+    (list
+      (list 'neuron (list 0.6 -0.4) 0.05))))
+
+(define fixture-network
+  (list 'network (list 2 2 1) fixture-weights))
+
+;;; (input target expected-output expected-loss) per case.
+(define fixture-cases
+  (list
+    (list (list 0 0) (list 0) 0.5460989866 0.2982241032)
+    (list (list 0 1) (list 1) 0.5092822253 0.2408039344)
+    (list (list 1 0) (list 1) 0.5699505688 0.1849425133)
+    (list (list 1 1) (list 0) 0.5337512224 0.2848903675)))
+
+(define (test-consistency)
+  "Cross-implementation consistency: forward output + MSE loss"
+  (for-each
+    (lambda (case)
+      (let* ((input (car case))
+             (target (cadr case))
+             (expected-output (caddr case))
+             (expected-loss (cadddr case))
+             (output (forward input fixture-network))
+             (loss (mse-loss output target)))
+        (assert-approx (car output) expected-output fixture-tolerance
+          (string-append "consistency output for input "
+                         (format #f "~a" input)))
+        (assert-approx loss expected-loss fixture-tolerance
+          (string-append "consistency loss for input "
+                         (format #f "~a" input)))))
+    fixture-cases))
+
+;;; ============================================================================
 ;;; Run All Tests
 ;;; ============================================================================
 
@@ -347,7 +395,12 @@
   (test-simple-training)
   (test-module-composition)
   (newline)
-  
+
+  (display "--- Cross-Implementation Consistency ---")
+  (newline)
+  (test-consistency)
+  (newline)
+
   (test-summary))
 
 ;;; Run tests if this file is loaded directly

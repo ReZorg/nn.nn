@@ -7,7 +7,7 @@ use lib '.';
 use NN;
 use Test;
 
-plan 34;
+plan 35;
 
 # ============================================================================
 # Test 1: Random Number Generation
@@ -457,6 +457,48 @@ subtest "Simple XOR Learning" => {
     
     my @output = predict([0.0, 0.0], $trained);
     ok @output[0] >= 0 && @output[0] <= 1, "trained network produces valid output";
+}
+
+# ============================================================================
+# Test 14: Cross-Implementation Consistency (docs/fixtures/xor_fixture.json)
+# ============================================================================
+#
+# Builds the fixed 2-2-1 sigmoid MLP shared with every other port and asserts
+# the forward output and MSE loss to a tight tolerance, guaranteeing all
+# implementations agree numerically on one deterministic fixture.
+
+subtest "Cross-Implementation Consistency" => {
+    plan 8;
+
+    my $tol = 1e-6;
+
+    # weights[layer][neuron] = { weights => [...], bias => number }
+    my @weights;
+    my @layer1;
+    @layer1.push({ weights => [0.5, -0.5],  bias => 0.1  });
+    @layer1.push({ weights => [-0.25, 0.75], bias => -0.2 });
+    my @layer2;
+    @layer2.push({ weights => [0.6, -0.4],  bias => 0.05 });
+    @weights.push(@layer1);
+    @weights.push(@layer2);
+
+    # (input, target, expected-output, expected-loss) per case
+    my @cases = (
+        [ [0.0, 0.0], [0.0], 0.5460989866, 0.2982241032 ],
+        [ [0.0, 1.0], [1.0], 0.5092822253, 0.2408039344 ],
+        [ [1.0, 0.0], [1.0], 0.5699505688, 0.1849425133 ],
+        [ [1.0, 1.0], [0.0], 0.5337512224, 0.2848903675 ],
+    );
+
+    for @cases -> $case {
+        my ($input, $target, $exp-out, $exp-loss) = @$case;
+        my @out  = forward($input, @weights);
+        my $loss = mse-loss(@out, $target);
+        is-approx @out[0], $exp-out, "consistency output for input $input.raku()",
+            :abs-tol($tol);
+        is-approx $loss, $exp-loss, "consistency loss for input $input.raku()",
+            :abs-tol($tol);
+    }
 }
 
 done-testing;

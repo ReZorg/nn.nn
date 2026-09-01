@@ -27,5 +27,6 @@ session NN = "HOL-Library" +
     NN_Exec
     NN
     NN_Test
+    NN_Consistency
     NN_Demo
     NN_Examples
