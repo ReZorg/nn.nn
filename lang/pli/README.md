@@ -490,6 +490,10 @@ plingua demo.pli
 # 10. LSTM sequence prediction
 # 11. Attention weights
 # 12. Spiking Neural P System XOR
+# 13. GNN node classification on a toy graph
+# 14. Evolving XOR weights (membrane-division neuroevolution)
+# 15. Bayesian Monte-Carlo uncertainty on a noisy regression point
+# 16. Greedy decoding of a 4-token sequence
 ```
 
 ## Running Examples
