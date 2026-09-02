@@ -34,6 +34,7 @@ This implementation demonstrates how neural network algorithms can be expressed 
 - **Bayesian Layers**: Weight distributions, reparameterization trick, KL regularization, Monte-Carlo uncertainty estimates
 - **Transformer Decoder**: Causal masking, masked self-attention, cross-attention, decoder stacks, positional encodings, greedy decoding
 - **AtomSpace**: OpenCog-style hypergraph knowledge base — atoms as membranes, truth/attention values, ECAN attention spreading, Hebbian learning, pattern matching, attentional focus
+- **a9nn NNECCO Agent**: full cognitive architecture — Echo State Reservoir, 12-step EchoBeats loop, emotion processing, consciousness layers (L0–L3), episodic memory, parallel LLaMA pool, hardware-style registers
 
 ## Installation
 
@@ -333,6 +334,38 @@ spreading is native multiset rewriting.
 @module attentional_focus(threshold) /* in_focus{} is derived, not stored */
 ```
 
+### a9nn NNECCO Agent (a9nn.pli)
+
+The P-Systems counterpart of `lang/a9nn/NNECCOAgent.lua`: the full NNECCO
+cognitive architecture, layered on `atomspace.pli`. The 12-beat EchoBeats
+cycle that Lua runs as a sequential method chain becomes a single
+maximally-parallel rule system phase-locked by a program-counter register.
+
+#### Subsystems
+```plingua
+@module echo_reservoir(in_size, reservoir_n, spectral_radius, leak_rate)
+/* Echo State Network: leaky-integrator neurons, recurrent synapse objects */
+
+@module emotion_unit          /* 8 channels: curiosity, joy, surprise, ...   */
+@module consciousness(layer0) /* L0 DORMANT .. L3 META, loss-driven REFLECT  */
+@module episodic_memory(capacity) /* prioritised experience replay          */
+@module llama_pool(num_instances, base_port)  /* least-load dispatch, stub  */
+@module planner(action_size)  /* emotion-modulated argmax action selection  */
+```
+
+#### The Agent and the EchoBeats Cycle
+```plingua
+@model nnecco_agent(state_size, action_size, reservoir_n,
+                    num_llama, base_port, consciousness0)
+/* Top-level composite with hardware registers R0..R4, PC, STA */
+
+@module echobeats_driver
+/* PC-gated 12-beat loop:                                  */
+/* 1 PERCEIVE  2 FILTER  3 RESONATE  4 ENCODE              */
+/* 5 RECALL    6 REASON  7 EMOTE     8 PLAN                */
+/* 9 LEARN    10 REFLECT 11 EXPRESS  12 INTEGRATE          */
+```
+
 ### Inference
 
 #### Predict
@@ -478,8 +511,8 @@ plingua test_nn.pli
 plingua test_extensions.pli
 
 # Expected output:
-# Total Tests: 38
-# Passed: 38
+# Total Tests: 46
+# Passed: 46
 # Failed: 0
 # Success Rate: 100%
 ```
@@ -520,6 +553,10 @@ plingua test_extensions.pli
 - ✅ ECAN attention spreading (STI conservation, wage→income)
 - ✅ Hebbian link formation between co-focused atoms
 - ✅ AtomSpace pattern matching and attentional focus
+- ✅ a9nn reservoir leaky tick and EchoBeats PC cycling
+- ✅ Emotion update and consciousness REFLECT transitions
+- ✅ Episodic memory push/recall and LLaMA least-load dispatch
+- ✅ PLAN argmax action selection and INTEGRATE episode logging
 
 ## Running Demos
 
@@ -727,6 +764,7 @@ Completed extensions:
 - [x] Probabilistic P-Systems for Bayesian layers — `bayesian.pli`
 - [x] Full transformer decoder with causal masking — `transformer_decoder.pli`
 - [x] AtomSpace hypergraph knowledge base (ECAN, Hebbian, matcher) — `atomspace.pli`
+- [x] a9nn NNECCO cognitive agent (reservoir, EchoBeats, emotion, LLaMA pool) — `a9nn.pli`
 
 ## References
 
@@ -774,7 +812,7 @@ The following modules extend the core implementation with advanced features:
 | `layers.pli` | LookupTable (embedding), Bilinear, SparseLinear, Xavier/He initialization |
 | `attention.pli` | Scaled dot-product attention, multi-head attention, transformer encoder block, native batch processing |
 | `snp.pli` | Spiking Neural P Systems: SN P neurons, synapses, spike-train encoding, rate-coded bridge, SN P XOR |
-| `test_extensions.pli` | 38 tests covering all extension, v2.1, v2.2 and v2.3 modules |
+| `test_extensions.pli` | 46 tests covering all extension, v2.1, v2.2 and v2.3 modules |
 
 ## Extensions (v2.2)
 
@@ -790,6 +828,7 @@ The following modules extend the core implementation with advanced features:
 | Module | Description |
 |--------|-------------|
 | `atomspace.pli` | OpenCog-style hypergraph knowledge base: atom nodes/links as membranes (structural nesting), truth values with count-based revision, attention values (STI/LTI), ECAN attention spreading as conserved-currency antiport exchange, Hebbian learning, pattern matching, derived attentional focus. Mirrors `lang/a9nn/AtomSpace.lua`. |
+| `a9nn.pli` | NNECCO cognitive agent: Echo State Reservoir membrane (leaky-integrator neurons, spectral radius), 12-beat EchoBeats loop phase-locked by a PC register, emotion processing unit (8 channels), consciousness layers L0–L3 with loss-driven meta-cognition, prioritised episodic memory, parallel LLaMA pool (least-load antiport dispatch, stub mode), hardware-style registers R0–R4/PC/STA. Mirrors `lang/a9nn/NNECCOAgent.lua`. |
 
 ### Weight Interchange Format
 

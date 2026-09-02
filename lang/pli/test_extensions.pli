@@ -31,6 +31,7 @@
 @import "bayesian.pli"
 @import "transformer_decoder.pli"
 @import "atomspace.pli"
+@import "a9nn.pli"
 @import "test_nn.pli"   /* reuse test_framework */
 
 /* ============================================================================
@@ -1119,6 +1120,217 @@
 }
 
 /* ============================================================================
+ * a9nn NNECCO AGENT TESTS
+ * Reservoir, EchoBeats PC cycling, emotion update, consciousness REFLECT,
+ * episodic replay, LLaMA dispatch, PLAN argmax, INTEGRATE episode logging.
+ * All continuous values are integers scaled by 100.
+ * ============================================================================ */
+
+@test reservoir_tick_test
+{
+    @description "Leaky reservoir: x' = (1-a)x + a*tanh(pre); a=70/100"
+
+    @setup
+    {
+        [test_res
+            pc{3}
+            rspec{90, 70}
+            x{1, 100}              /* current activation 1.00 */
+            pre{1, 100}            /* pre-activation 1.00 -> tanh ~ 0.76 */
+        ]'main
+    }
+
+    @rules
+    {
+        /* (1-0.7)*100 + 0.7*76 = 30 + 53 = 83 */
+        [pc{3}, x{1, 100}, pre{1, 100}, rspec{90, 70}]'test_res ->
+            [pc{3}, x{1, 83}, rspec{90, 70}]'test_res
+
+        assert_equal("reservoir_leaky_tick", 83, x{1})
+        assert_equal("reservoir_advances_pc", 4, pc_after_resonate{1})
+    }
+}
+
+@test echobeats_pc_cycle_test
+{
+    @description "INTEGRATE resets PC to 1 and increments the cycle counter"
+
+    @setup
+    {
+        [test_agent
+            pc{12}
+            cycle{5}
+            loss{0}
+        ]'main
+    }
+
+    @rules
+    {
+        [pc{12}, cycle{5}, loss{0}]'test_agent ->
+            [pc{1}, cycle{6}]'test_agent
+
+        assert_equal("echobeats_pc_reset", 1, pc{1})
+        assert_equal("echobeats_cycle_increment", 6, cycle{1})
+    }
+}
+
+@test emotion_update_test
+{
+    @description "EMOTE: curiosity rises with novelty, joy with reward"
+
+    @setup
+    {
+        [test_agent
+            pc{7}
+            emo{1, 60}     /* curiosity 0.60 */
+            emo{2, 0}      /* joy 0.00 */
+            novelty{200}   /* |novelty| 2.00 */
+            reward{100}    /* reward 1.00 */
+        ]'main
+    }
+
+    @rules
+    {
+        /* c' = 60*95/100 + 200*5/100 = 57 + 10 = 67 */
+        [pc{7}, emo{1, 60}, novelty{200}]'test_agent ->
+            [pc{7}, emo{1, 67}, novelty{200}]'test_agent
+
+        /* j' = 0*90/100 + 100*10/100 = 10 */
+        [pc{7}, emo{2, 0}, reward{100}]'test_agent ->
+            [pc{7}, emo{2, 10}, reward{100}]'test_agent
+
+        assert_equal("emotion_curiosity_up", 67, emo{1})
+        assert_equal("emotion_joy_up", 10, emo{2})
+    }
+}
+
+@test consciousness_reflect_test
+{
+    @description "REFLECT: high loss raises deliberation, low loss settles"
+
+    @setup
+    {
+        [test_hi pc{10} layer{1} loss{80}]'main     /* loss 0.80 -> layer up */
+        [test_lo pc{10} layer{2} loss{1}]'main      /* boundary: not < 1 */
+    }
+
+    @rules
+    {
+        [pc{10}, layer{1}, loss{80}]'test_hi ->
+            [pc{10}, layer{2}, loss{80}]'test_hi
+
+        /* lo=1 is neither >50 nor (0<lo<1): layer stays 2 */
+        [pc{10}, layer{2}, loss{1}]'test_lo ->
+            [pc{10}, layer{2}, loss{1}]'test_lo
+
+        assert_equal("consciousness_raises", 2, layer_hi{1})
+        assert_equal("consciousness_boundary", 2, layer_lo{1})
+    }
+}
+
+@test episodic_push_recall_test
+{
+    @description "Memory: push writes at head and advances it modulo capacity"
+
+    @setup
+    {
+        [test_mem
+            memcfg{3}
+            head{3}
+            memcount{2}
+            store_exp{s1, a1, r1, s2, 0}
+        ]'main
+    }
+
+    @rules
+    {
+        [store_exp{s1, a1, r1, s2, 0}, head{3}, memcount{2}, memcfg{3}]'test_mem ->
+            [exp{3, s1, a1, r1, s2, 0}, prio{3, 100},
+             head{1}, memcount{3}]'test_mem   /* (3 mod 3)+1 = 1 */
+
+        assert_equal("memory_head_wraps", 1, head{1})
+        assert_equal("memory_count_grows", 3, memcount{1})
+    }
+}
+
+@test llama_dispatch_test
+{
+    @description "REASON dispatches prompt to least-loaded instance (stub echo)"
+
+    @setup
+    {
+        [test_agent
+            pc{6}
+            prompt{hello}
+            [llama{1} load{2} tokens_served{0}]'test_agent
+            [llama{2} load{0} tokens_served{0}]'test_agent
+        ]'main
+    }
+
+    @rules
+    {
+        /* Instance 2 has lower load -> it takes the request. */
+        [pc{6}, prompt{hello}]'test_agent [load{0}]'llama{2} ->
+            [pc{6}, prompt{hello}]'test_agent [load{1}]'llama{2}
+
+        /* Stub completion: 64 tokens served, response tagged with id 2. */
+        [load{1}, tokens_served{0}]'llama{2} [prompt{hello}]'test_agent ->
+            [load{0}, tokens_served{64}]'llama{2}
+            [llama_resp{hello, 64, 2}]'test_agent
+
+        assert_equal("llama_least_loaded", 2, chosen_instance{1})
+        assert_equal("llama_tokens", 64, tokens_served{2})
+    }
+}
+
+@test planner_argmax_test
+{
+    @description "PLAN selects argmax action over emotion-modulated Q-values"
+
+    @setup
+    {
+        [test_agent
+            pc{8}
+            q{1, 30}
+            q{2, 85}
+            q{3, 50}
+        ]'main
+    }
+
+    @rules
+    {
+        [pc{8}, q{1, 30}, q{2, 85}, q{3, 50}]'test_agent ->
+            [pc{8}, best_action{2}]'test_agent
+
+        assert_equal("planner_argmax", 2, best_action{1})
+    }
+}
+
+@test integrate_episode_test
+{
+    @description "INTEGRATE logs an EpisodeNode whose strength falls with loss"
+
+    @setup
+    {
+        [test_agent
+            pc{12}
+            cycle{0}
+            loss{20}     /* 0.20 -> strength 100-20 = 80 */
+        ]'main
+    }
+
+    @rules
+    {
+        [pc{12}, cycle{0}, loss{20}]'test_agent ->
+            [pc{1}, cycle{1}]'test_agent
+            (episode_node{1, 80}, out)
+
+        assert_equal("integrate_episode_strength", 80, episode_strength{1})
+        assert_equal("integrate_cycle_bumped", 1, cycle{1})
+    }
+}
+
+/* ============================================================================
  * TEST RUNNER
  * ============================================================================ */
 
@@ -1198,6 +1410,16 @@
     attentional_focus_test
     focus_departure_test
 
+    /* a9nn NNECCO cognitive agent */
+    reservoir_tick_test
+    echobeats_pc_cycle_test
+    emotion_update_test
+    consciousness_reflect_test
+    episodic_push_recall_test
+    llama_dispatch_test
+    planner_argmax_test
+    integrate_episode_test
+
     [test_suite
         total_tests{t}
         passed_tests{p}
@@ -1223,8 +1445,8 @@
 @expected_output
 {
     test_results{
-        "Total Tests": 38,
-        "Passed": 38,
+        "Total Tests": 46,
+        "Passed": 46,
         "Failed": 0,
         "Success Rate": "100%"
     }

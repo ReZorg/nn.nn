@@ -55,6 +55,8 @@
 
             /* v2.3 extension modules */
             module{atomspace,             "1.0.0", [nn, integration]}
+            module{a9nn,                  "1.0.0", [nn, atomspace,
+                                                    integration]}
         ]'main
     }
 

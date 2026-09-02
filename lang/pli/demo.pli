@@ -861,6 +861,68 @@
 }
 
 /* ============================================================================
+ * DEMO 19: a9nn NNECCO Cognitive Agent - one EchoBeats cycle
+ * ============================================================================ */
+
+@demo a9nn_nnecco_demo
+{
+    @description "Run one 12-beat EchoBeats cognitive cycle of the NNECCO agent"
+
+    @membrane_structure
+    {
+        [agent
+            /* Hardware registers */
+            reg{r0, 0} reg{r1, 0} reg{r2, 0} reg{r3, 0} reg{r4, 0}
+            pc{1}
+            sta{0}
+            cycle{0}
+            layer{1}              /* start REACTIVE */
+
+            /* Subsystems */
+            echo_reservoir(64, 847, 90, 70)
+            emotion_unit
+            consciousness(1)
+            episodic_memory(1000)
+            llama_pool(4, 8080)   /* 4 parallel LLaMA instances */
+            planner(8)
+            atomspace_system(50, 10)
+
+            /* One perception to drive the cycle */
+            raw_input{explain_gradient_descent}
+            novelty{150}
+            reward{80}
+        ]'main
+    }
+
+    @execution
+    {
+        echobeats_driver
+
+        []'main (display{
+            "a9nn NNECCO Agent - EchoBeats Cycle",
+            "Reservoir": "847 neurons, spectral=0.90, leak=0.70",
+            "Consciousness": "L1 REACTIVE (rises if loss high)",
+            "LLaMA pool": "4 instances on ports 8080-8083",
+            "Beat trace": [
+                "1 PERCEIVE  -> R0 <- raw input",
+                "2 FILTER    -> attenuate sub-threshold features",
+                "3 RESONATE  -> reservoir tick (leaky tanh)",
+                "4 ENCODE    -> R2 <- compressed context",
+                "5 RECALL    -> top-priority episodes",
+                "6 REASON    -> least-loaded LLaMA instance (stub)",
+                "7 EMOTE     -> curiosity/joy/surprise update",
+                "8 PLAN      -> argmax action from modulated Q",
+                "9 LEARN     -> store transition, emit loss",
+                "10 REFLECT  -> adjust consciousness layer",
+                "11 EXPRESS  -> package output text",
+                "12 INTEGRATE-> EpisodeNode -> AtomSpace, PC->1"
+            ],
+            "Result": "cycle=1, output + episode logged, PC reset to 1"
+        }, out)
+    }
+}
+
+/* ============================================================================
  * MAIN DEMO RUNNER
  * ============================================================================ */
 
@@ -899,6 +961,7 @@
         "16. Greedy Decoding (4-Token Sequence)",
         "17. AtomSpace ECAN Attention Spreading",
         "18. AtomSpace Hebbian Learning",
+        "19. a9nn NNECCO Cognitive Agent (EchoBeats)",
         "",
         "Running all demos..."
     }, out)
@@ -922,6 +985,7 @@
     greedy_decoding
     atomspace_ecan_demo
     atomspace_hebbian_demo
+    a9nn_nnecco_demo
     
     /* Conclusion */
     []'main (display{
