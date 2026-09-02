@@ -30,6 +30,7 @@
 @import "neuroevolution.pli"
 @import "bayesian.pli"
 @import "transformer_decoder.pli"
+@import "atomspace.pli"
 @import "test_nn.pli"   /* reuse test_framework */
 
 /* ============================================================================
@@ -887,6 +888,237 @@
 }
 
 /* ============================================================================
+ * ATOMSPACE TESTS
+ * Hypergraph knowledge base: atom nodes/links as membranes, truth-value
+ * revision, ECAN attention spreading, Hebbian wiring, pattern matching and
+ * the attentional focus.  All values are integers scaled by 100.
+ * ============================================================================ */
+
+@test atom_node_creation_test
+{
+    @description "A node membrane carries type, name, tv and av objects"
+
+    @setup
+    {
+        [test_atomspace
+            [atom{1}
+                is_node{}
+                atype{concept}
+                aname{cat}
+                tv{80, 90}
+                av{50, 10}
+            ]'test_atomspace
+        ]'main
+    }
+
+    @rules
+    {
+        [tv{s, c}]'atom{1} -> [got_tv{s, c}]'atom{1}
+        assert_equal("atom_node_strength", 80, got_tv{1})
+
+        [av{sti, lti}]'atom{1} -> [got_sti{sti}]'atom{1}
+        assert_equal("atom_node_sti", 50, got_sti{1})
+    }
+}
+
+@test atom_link_nesting_test
+{
+    @description "A link membrane contains its endpoint atoms (hypergraph)"
+
+    @setup
+    {
+        [test_atomspace
+            [link{7}
+                is_link{}
+                atype{inheritance}
+                tv{100, 100}
+                [atom{1} atype{concept} aname{cat}]'link{7}
+                [atom{2} atype{concept} aname{animal}]'link{7}
+            ]'test_atomspace
+        ]'main
+    }
+
+    @rules
+    {
+        /* Count endpoints nested inside the link membrane */
+        [is_link{}]'link{7} [atom{1}]'link{7} [atom{2}]'link{7} ->
+            [arity{2}]'link{7}
+
+        assert_equal("atom_link_arity", 2, arity{1})
+    }
+}
+
+@test tv_revision_test
+{
+    @description "Merging two TVs weight-averages strength by count (k=1)"
+
+    @setup
+    {
+        [test_atomspace
+            [atom{1}
+                is_node{}
+                tv{80, 90}        /* s=80, c=90 */
+                revise_tv{40, 10} /* second observation s=40, c=10 */
+            ]'test_atomspace
+        ]'main
+    }
+
+    @rules
+    {
+        /* s' = (80*90 + 40*10)/(90+10) = (7200+400)/100 = 76
+         * c' = (90+10)*100/(90+10+100) = 10000/200 = 50 */
+        [tv{76, 50}]'atom{1} -> [revised{}]'atom{1}
+
+        assert_equal("tv_revised_strength", 76, tv_strength{1})
+        assert_equal("tv_revised_confidence", 50, tv_confidence{1})
+    }
+}
+
+@test ecan_spread_conservation_test
+{
+    @description "ECAN diffusion conserves total STI (wage = income)"
+
+    @setup
+    {
+        [test_atomspace
+            spread_wage{10}
+            [atom{1} av{100, 0} ]'test_atomspace     /* source, in focus */
+            [link{5} link_member{5, 2} ]'test_atomspace
+            [atom{2} av{0, 0} ]'test_atomspace       /* target */
+        ]'main
+    }
+
+    @rules
+    {
+        /* Source pays wage 10; target (link member) collects 10. */
+        [av{sti, lti}]'atom{1} ->
+            [av{sti - 10, lti}]'atom{1} (sti_pay{1, 10}, out)
+            where sti >= 10
+
+        [sti_pay{1, w}, link_member{5, 2}]'link{5} ->
+            [link_member{5, 2}]'link{5} (sti_income{2, w}, out)
+
+        [av{sti, lti}, sti_income{2, w}]'atom{2} ->
+            [av{sti + w, lti}]'atom{2}
+
+        /* After one step: source 90, target 10 -> total still 100. */
+        [av{s1, _}]'atom{1} [av{s2, _}]'atom{2} ->
+            [total_sti{s1 + s2}]'test_atomspace
+
+        assert_equal("ecan_sti_conserved", 100, total_sti{1})
+        assert_equal("ecan_source_paid", 90, atom1_sti{1})
+        assert_equal("ecan_target_income", 10, atom2_sti{1})
+    }
+}
+
+@test hebbian_wiring_test
+{
+    @description "Two co-focused atoms form a symmetric Hebbian link (I<J)"
+
+    @setup
+    {
+        [test_atomspace
+            [atom{1} av{60, 0} ]'test_atomspace
+            [atom{3} av{70, 0} ]'test_atomspace
+        ]'main
+    }
+
+    @rules
+    {
+        /* Both focused atoms pulse ... */
+        [av{sti, lti}]'atom{I} ->
+            [av{sti, lti}]'atom{I} (hebb_pulse{I}, out)
+            where sti > 0
+
+        /* ... and simultaneous pulses wire a HebbianLink (1<3). */
+        [hebb_pulse{1}, hebb_pulse{3}]'test_atomspace ->
+            [hebb_pulse{1}, hebb_pulse{3}]'test_atomspace
+            [hebb_link{1, 3} atype{hebbian} tv{50, 100}]'test_atomspace
+            where 1 < 3
+
+        assert_equal("hebbian_link_formed", 50, hebb_link_strength{1, 3})
+    }
+}
+
+@test pattern_match_by_type_test
+{
+    @description "query_type{T} rewrites to match{I} for atoms of that type"
+
+    @setup
+    {
+        [test_atomspace
+            query_type{concept}
+            [atom{1} atype{concept} ]'test_atomspace
+            [atom{2} atype{predicate} ]'test_atomspace
+            [atom{3} atype{concept} ]'test_atomspace
+        ]'main
+    }
+
+    @rules
+    {
+        [query_type{concept}]'test_atomspace [atype{concept}]'atom{I} ->
+            [query_type{concept}]'test_atomspace (match{I}, out)
+
+        /* Two concept atoms (1 and 3) match; the predicate does not. */
+        [match{1}]'test_atomspace [match{3}]'test_atomspace ->
+            [match_count{2}]'test_atomspace
+
+        assert_equal("pattern_match_count", 2, match_count{1})
+    }
+}
+
+@test attentional_focus_test
+{
+    @description "Atoms with STI >= threshold are flagged in_focus{}"
+
+    @setup
+    {
+        [test_atomspace
+            focus_threshold{50}
+            [atom{1} av{80, 0} ]'test_atomspace   /* in focus */
+            [atom{2} av{30, 0} ]'test_atomspace   /* below threshold */
+        ]'main
+    }
+
+    @rules
+    {
+        [av{sti, lti}]'atom{I} ->
+            [av{sti, lti}, in_focus{}]'atom{I}
+            where sti >= 50
+
+        [in_focus{}]'atom{1} -> [focus_flag{}]'test_atomspace
+
+        assert_equal("focus_member_marked", 1, focus_flag_count{1})
+    }
+}
+
+@test focus_departure_test
+{
+    @description "An atom that drops below threshold leaves the focus"
+
+    @setup
+    {
+        [test_atomspace
+            focus_threshold{50}
+            [atom{1} av{40, 0} in_focus{} ]'test_atomspace  /* fell below */
+        ]'main
+    }
+
+    @rules
+    {
+        /* STI 40 < 50 -> the in_focus flag is removed. */
+        [in_focus{}, av{sti, lti}]'atom{1} ->
+            [av{sti, lti}]'atom{1}
+            where sti < 50
+
+        [av{sti, lti}]'atom{1} -> [no_focus{1}]'test_atomspace
+            where sti < 50
+
+        assert_equal("focus_departed", 1, no_focus{1})
+    }
+}
+
+/* ============================================================================
  * TEST RUNNER
  * ============================================================================ */
 
@@ -956,6 +1188,16 @@
     causal_mask_test
     decoder_residual_test
 
+    /* AtomSpace */
+    atom_node_creation_test
+    atom_link_nesting_test
+    tv_revision_test
+    ecan_spread_conservation_test
+    hebbian_wiring_test
+    pattern_match_by_type_test
+    attentional_focus_test
+    focus_departure_test
+
     [test_suite
         total_tests{t}
         passed_tests{p}
@@ -981,8 +1223,8 @@
 @expected_output
 {
     test_results{
-        "Total Tests": 30,
-        "Passed": 30,
+        "Total Tests": 38,
+        "Passed": 38,
         "Failed": 0,
         "Success Rate": "100%"
     }

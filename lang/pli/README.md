@@ -33,6 +33,7 @@ This implementation demonstrates how neural network algorithms can be expressed 
 - **Neuroevolution**: Genome membranes, mutation, crossover, division-based reproduction, tournament selection, NEAT-style topology evolution
 - **Bayesian Layers**: Weight distributions, reparameterization trick, KL regularization, Monte-Carlo uncertainty estimates
 - **Transformer Decoder**: Causal masking, masked self-attention, cross-attention, decoder stacks, positional encodings, greedy decoding
+- **AtomSpace**: OpenCog-style hypergraph knowledge base — atoms as membranes, truth/attention values, ECAN attention spreading, Hebbian learning, pattern matching, attentional focus
 
 ## Installation
 
@@ -288,6 +289,50 @@ Backward: Gradient ← Weight × Gradient ← Loss
 /* Autoregressive generation via argmax over last-position logits */
 ```
 
+### AtomSpace (atomspace.pli)
+
+The P-Systems counterpart of `lang/a9nn/AtomSpace.lua`: an OpenCog-style
+hypergraph knowledge base where **atoms are membranes** and attention
+spreading is native multiset rewriting.
+
+#### Atoms (Nodes and Links)
+```plingua
+@module atom_node(id, type, name, s0, c0, sti0, lti0)
+/* A typed, named leaf atom membrane carrying tv{s,c} and av{sti,lti} */
+
+@module atom_link(id, type)
+/* A link membrane that CONTAINS its endpoint atom membranes, */
+/* so hypergraph nesting is structural; endpoints record incoming ids */
+```
+
+#### Truth-Value Revision
+```plingua
+@module tv_revision
+/* Merging two observations weight-averages strength by count (k=1): */
+/* s' = (s1*c1 + s2*c2)/(c1+c2);  c' = (c1+c2)*100/(c1+c2+100) */
+```
+
+#### ECAN Attention Spreading
+```plingua
+@module ecan_spread(wage)
+/* STI is a conserved currency: focused atoms pay a wage that flows as  */
+/* income to their link-neighbours via antiport exchange. One           */
+/* maximally-parallel step diffuses STI across the whole focus.         */
+```
+
+#### Hebbian Learning
+```plingua
+@module hebbian_learning(strength0)
+/* Co-focused atoms emit simultaneous pulses; a pulse pair wires a      */
+/* symmetric HebbianLink ("fire together, wire together").              */
+```
+
+#### Pattern Matching and Attentional Focus
+```plingua
+@module atomspace_matcher            /* query_type{T} / query_link{T,X} */
+@module attentional_focus(threshold) /* in_focus{} is derived, not stored */
+```
+
 ### Inference
 
 #### Predict
@@ -433,8 +478,8 @@ plingua test_nn.pli
 plingua test_extensions.pli
 
 # Expected output:
-# Total Tests: 30
-# Passed: 30
+# Total Tests: 38
+# Passed: 38
 # Failed: 0
 # Success Rate: 100%
 ```
@@ -470,6 +515,11 @@ plingua test_extensions.pli
 - ✅ Membrane-division reproduction and tournament selection
 - ✅ Bayesian reparameterized weights and Monte-Carlo mean
 - ✅ Causal mask and decoder-block residual connection
+- ✅ Atom node/link membranes and hypergraph nesting
+- ✅ Truth-value revision (count-weighted strength merge)
+- ✅ ECAN attention spreading (STI conservation, wage→income)
+- ✅ Hebbian link formation between co-focused atoms
+- ✅ AtomSpace pattern matching and attentional focus
 
 ## Running Demos
 
@@ -676,6 +726,7 @@ Completed extensions:
 - [x] Neuroevolution via membrane division rules — `neuroevolution.pli`
 - [x] Probabilistic P-Systems for Bayesian layers — `bayesian.pli`
 - [x] Full transformer decoder with causal masking — `transformer_decoder.pli`
+- [x] AtomSpace hypergraph knowledge base (ECAN, Hebbian, matcher) — `atomspace.pli`
 
 ## References
 
@@ -723,7 +774,7 @@ The following modules extend the core implementation with advanced features:
 | `layers.pli` | LookupTable (embedding), Bilinear, SparseLinear, Xavier/He initialization |
 | `attention.pli` | Scaled dot-product attention, multi-head attention, transformer encoder block, native batch processing |
 | `snp.pli` | Spiking Neural P Systems: SN P neurons, synapses, spike-train encoding, rate-coded bridge, SN P XOR |
-| `test_extensions.pli` | 30 tests covering all extension, v2.1 and v2.2 modules |
+| `test_extensions.pli` | 38 tests covering all extension, v2.1, v2.2 and v2.3 modules |
 
 ## Extensions (v2.2)
 
@@ -733,6 +784,12 @@ The following modules extend the core implementation with advanced features:
 | `neuroevolution.pli` | Neuroevolution via membrane division: genome membranes, point mutation, antiport crossover, divide-and-mutate reproduction, tournament selection, NEAT-style structural mutation, evolution loop |
 | `bayesian.pli` | Probabilistic P-Systems for Bayesian layers: Gaussian sampler (central-limit), Bayes-by-Backprop linear layer, KL divergence regularizer, Monte-Carlo predictive mean/variance |
 | `transformer_decoder.pli` | Full transformer decoder with causal masking: masked self-attention, cross-attention, masked multi-head attention, decoder blocks/stacks, sinusoidal positional encoding, full encoder-decoder transformer, greedy decoding |
+
+## Extensions (v2.3)
+
+| Module | Description |
+|--------|-------------|
+| `atomspace.pli` | OpenCog-style hypergraph knowledge base: atom nodes/links as membranes (structural nesting), truth values with count-based revision, attention values (STI/LTI), ECAN attention spreading as conserved-currency antiport exchange, Hebbian learning, pattern matching, derived attentional focus. Mirrors `lang/a9nn/AtomSpace.lua`. |
 
 ### Weight Interchange Format
 

@@ -781,6 +781,86 @@
 }
 
 /* ============================================================================
+ * DEMO 17: AtomSpace Knowledge Graph + ECAN Attention
+ * ============================================================================ */
+
+@demo atomspace_ecan_demo
+{
+    @description "Build a small hypergraph and spread attention with ECAN"
+
+    @membrane_structure
+    {
+        [atomspace
+            focus_threshold{50}
+            spread_wage{10}
+
+            /* Nodes: cat, animal, mammal */
+            [atom{1} atype{concept} aname{cat}    tv{90,90} av{100,0}]'atomspace
+            [atom{2} atype{concept} aname{animal} tv{95,95} av{0,0} ]'atomspace
+            [atom{3} atype{concept} aname{mammal} tv{85,85} av{0,0} ]'atomspace
+
+            /* Link: cat -inherits-> animal, animal -inherits-> mammal */
+            [link{10} atype{inheritance} tv{100,100}
+                link_member{10, 1} link_member{10, 2}]'atomspace
+            [link{11} atype{inheritance} tv{100,100}
+                link_member{11, 2} link_member{11, 3}]'atomspace
+        ]'main
+    }
+
+    @execution
+    {
+        /* "cat" is in focus (sti=100) and pays a wage of 10, which flows
+         * through InheritanceLink 10 to "animal"; in the next step "animal"
+         * pays forward to "mammal". STI is conserved throughout. */
+        ecan_spread(10)
+        attentional_focus(50)
+
+        []'main (display{
+            "AtomSpace: ECAN Attention Spreading",
+            "Initial focus": ["cat (sti=100)"],
+            "After step 1": "animal collects 10 (cat 90)",
+            "After step 2": "mammal collects 10 (animal pays forward)",
+            "Total STI conserved": 100,
+            "Inference": "cat -> animal -> mammal (attention = activation)"
+        }, out)
+    }
+}
+
+/* ============================================================================
+ * DEMO 18: Hebbian Learning in the AtomSpace
+ * ============================================================================ */
+
+@demo atomspace_hebbian_demo
+{
+    @description "Co-focused atoms wire together into a Hebbian link"
+
+    @membrane_structure
+    {
+        [atomspace
+            focus_threshold{50}
+            [atom{1} atype{concept} aname{fire}  av{80,0}]'atomspace
+            [atom{2} atype{concept} aname{smoke} av{70,0}]'atomspace
+        ]'main
+    }
+
+    @execution
+    {
+        /* Both "fire" and "smoke" exceed the focus threshold, so both emit
+         * a Hebbian pulse in the same maximally-parallel step; the pair of
+         * pulses triggers creation of a symmetric HebbianLink. */
+        hebbian_learning(50)
+
+        []'main (display{
+            "AtomSpace: Hebbian Learning",
+            "Co-focused atoms": ["fire", "smoke"],
+            "Rule": "atoms that fire together wire together",
+            "Result": "HebbianLink{fire, smoke} tv{50, 100}",
+            "Note": "repeated co-activation strengthens the link (+1/step)"
+        }, out)
+    }
+}
+
+/* ============================================================================
  * MAIN DEMO RUNNER
  * ============================================================================ */
 
@@ -817,6 +897,8 @@
         "14. Evolving XOR Weights (Neuroevolution)",
         "15. Bayesian Uncertainty (Noisy Regression)",
         "16. Greedy Decoding (4-Token Sequence)",
+        "17. AtomSpace ECAN Attention Spreading",
+        "18. AtomSpace Hebbian Learning",
         "",
         "Running all demos..."
     }, out)
@@ -838,6 +920,8 @@
     neuroevolution_xor
     bayesian_uncertainty
     greedy_decoding
+    atomspace_ecan_demo
+    atomspace_hebbian_demo
     
     /* Conclusion */
     []'main (display{

@@ -52,6 +52,9 @@
             module{transformer_decoder,   "1.0.0", [nn, attention,
                                                     batch_normalization,
                                                     layers, activations]}
+
+            /* v2.3 extension modules */
+            module{atomspace,             "1.0.0", [nn, integration]}
         ]'main
     }
 
