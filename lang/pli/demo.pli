@@ -1148,6 +1148,57 @@
 }
 
 /* ============================================================================
+ * DEMO 25: P-Systems <-> B-Series Bridge
+ * ============================================================================ */
+
+@demo bseries_bridge_demo
+{
+    @description "Plant rooted trees in membrane nests and run P-System
+     * evolution and B-series gradient descent in the same parallel step"
+
+    @membrane_structure
+    {
+        [bridge
+            /* A chain tree (order 2) planted in its nest via Matula no. */
+            tree{chain}
+            matula{chain, 2}       /* p_1 = 2: one node over a leaf */
+            order{chain, 2}
+            density{chain, 2}
+            symmetry{chain, 1}
+
+            /* A parameter to update by the B-series-weighted gradient */
+            weight{1, 1000}
+            grad{1, 200}
+            lr{50}                 /* 0.50 */
+
+            /* Candidate topologies for orbifold root selection */
+            fit{chain, 60}
+            fit{bush, 85}
+        ]'main
+    }
+
+    @execution
+    {
+        tree_nest_bridge
+        elementary_weights
+        bseries_gradient_step(50)
+        rk_order_conditions
+        orbifold_quotient
+
+        []'main (display{
+            "P-Systems <-> B-Series Bridge",
+            "Shared topology": "chain tree planted in nest 2 (Matula p_1)",
+            "Elementary weight": "chain: order=2, density=2, b=1/2",
+            "Gradient as flow": "w <- w - lr*grad/(s*g) = 10 - 0.5*2/2",
+            "Order condition": "sum b(t) = 1  (exact rational)",
+            "Orbifold": "isomorphic trees canonify to minimal Matula",
+            "Unification": "membrane evolution IS the integrator stage;",
+            "": "adaptation (gradient) and niche construction (evolution) share one law"
+        }, out)
+    }
+}
+
+/* ============================================================================
  * MAIN DEMO RUNNER
  * ============================================================================ */
 
@@ -1192,6 +1243,7 @@
         "22. Parallel Supply-Chain Ledger (1000 entities)",
         "23. Unified Cognitive Cycle (reason + want + remember)",
         "24. Mixed-Radix Parallel Ops (membrane arity topologies)",
+        "25. P-Systems <-> B-Series Bridge (evolution = gradient flow)",
         "",
         "Running all demos..."
     }, out)
@@ -1221,6 +1273,7 @@
     parallel_ledger_demo
     unified_cycle_demo
     mixed_radix_demo
+    bseries_bridge_demo
     
     /* Conclusion */
     []'main (display{

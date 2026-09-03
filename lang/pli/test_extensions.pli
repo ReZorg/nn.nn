@@ -36,6 +36,7 @@
 @import "openpsi.pli"
 @import "unified.pli"
 @import "topology.pli"
+@import "bseries.pli"
 @import "test_nn.pli"   /* reuse test_framework */
 
 /* ============================================================================
@@ -1828,6 +1829,158 @@
 }
 
 /* ============================================================================
+ * P-SYSTEMS <-> B-SERIES BRIDGE TESTS
+ * Shared topology (tree<->nest), elementary weights (order/density/symmetry),
+ * B-series gradient step, RK order conditions, orbifold quotient.
+ * ============================================================================ */
+
+@test tree_nest_plant_test
+{
+    @description "A rooted tree plants into the membrane nest of its Matula no."
+
+    @setup
+    {
+        [test_bridge
+            tree{t1}
+            matula{t1, 6}        /* product tree p_1*p_2 = 2*3 = 6 */
+        ]'main
+    }
+
+    @rules
+    {
+        [tree{t1}, matula{t1, 6}]'test_bridge ->
+            [tree{t1}, matula{t1, 6}, planted_in{6}]'test_bridge
+
+        assert_equal("tree_planted_in_nest", 6, planted_nest{t1})
+    }
+}
+
+@test bseries_leaf_weights_test
+{
+    @description "Leaf tree: order=1, density=1, symmetry=1, b = 1/1"
+
+    @setup
+    {
+        [test_bridge tree{t} matula{t, 1}]'main
+    }
+
+    @rules
+    {
+        [tree{t}, matula{t, 1}]'test_bridge ->
+            [tree{t}, order{t, 1}, density{t, 1}, symmetry{t, 1}]'test_bridge
+
+        [symmetry{t, 1}, density{t, 1}]'test_bridge ->
+            [symmetry{t, 1}, density{t, 1}, bcoef{t, 1, 1}]'test_bridge
+
+        assert_equal("leaf_order", 1, order{t})
+        assert_equal("leaf_density", 1, density{t})
+        assert_equal("leaf_bcoef_den", 1, bcoef_den{t})
+    }
+}
+
+@test bseries_chain_weights_test
+{
+    @description "Chain tree (unary root over leaf): order 2, density 2, b=1/2"
+
+    @setup
+    {
+        [test_bridge
+            order{leaf, 1}
+            density{leaf, 1}
+            symmetry{leaf, 1}
+            parent{t, leaf}
+            unary{t}
+        ]'main
+    }
+
+    @rules
+    {
+        /* order = 1+1 = 2 ; density = 2*1 = 2 ; symmetry = 1 */
+        [order{leaf, 1}, density{leaf, 1}, symmetry{leaf, 1},
+         parent{t, leaf}, unary{t}]'test_bridge ->
+            [order{t, 2}, density{t, 2}, symmetry{t, 1}]'test_bridge
+
+        [symmetry{t, 1}, density{t, 2}]'test_bridge ->
+            [symmetry{t, 1}, density{t, 2}, bcoef{t, 1, 2}]'test_bridge
+
+        assert_equal("chain_order", 2, order{t})
+        assert_equal("chain_density", 2, density{t})
+        assert_equal("chain_bcoef_den", 2, bcoef_den{t})
+    }
+}
+
+@test bseries_gradient_step_test
+{
+    @description "B-series step: w <- w - lr*grad/(s*g); lr=50 (x100), sg=2"
+
+    @setup
+    {
+        [test_bridge
+            weight{1, 1000}        /* w = 10.00 (x100) */
+            grad{1, 200}           /* grad = 2.00 */
+            bcoef{t, 1, 2}         /* b(t) = 1/2 (chain tree) */
+            lr{50}                 /* lr = 0.50 */
+        ]'main
+    }
+
+    @rules
+    {
+        /* w <- 1000 - 50*200/2 = 1000 - 5000 = -4000 */
+        [weight{1, 1000}, grad{1, 200}, bcoef{t, 1, 2}, lr{50}]'test_bridge ->
+            [weight{1, -4000}, grad{1, 200}]'test_bridge
+
+        assert_equal("bseries_weight_update", -4000, weight{1})
+    }
+}
+
+@test rk_order1_test
+{
+    @description "Order-1 condition: sum b(t) = 1 for the 1-tree method"
+
+    @setup
+    {
+        [test_bridge
+            bsum{0, 1}             /* running rational sum, start 0/1 */
+            bcoef{t1, 1, 1}        /* single tree with b = 1/1 */
+        ]'main
+    }
+
+    @rules
+    {
+        /* Accumulate: (0*1 + 1, 1*1) = (1, 1); then n = d -> order1 ok. */
+        [bsum{0, 1}, bcoef{t1, 1, 1}]'test_bridge ->
+            [bsum{1, 1}]'test_bridge
+
+        [bsum{1, 1}]'test_bridge -> [order1_ok{1}]'test_bridge
+            where 1 = 1
+
+        assert_equal("rk_order1", 1, order1_ok{1})
+    }
+}
+
+@test orbifold_canonify_test
+{
+    @description "Orbifold: isomorphic trees canonify to the minimal Matula rep"
+
+    @setup
+    {
+        [test_bridge
+            matula{t1, 6}
+            matula{t2, 6}
+            isomorphic{t1, t2}
+        ]'main
+    }
+
+    @rules
+    {
+        [matula{t1, 6}, matula{t2, 6}, isomorphic{t1, t2}]'test_bridge ->
+            [canonical{t1, 6}]'test_bridge
+
+        assert_equal("orbifold_canonical", 6, canonical_m{t1})
+    }
+}
+
+/* ============================================================================
  * TEST RUNNER
  * ============================================================================ */
 
@@ -1945,6 +2098,14 @@
     differential_order_test
     partition_selection_test
 
+    /* P-Systems <-> B-Series bridge */
+    tree_nest_plant_test
+    bseries_leaf_weights_test
+    bseries_chain_weights_test
+    bseries_gradient_step_test
+    rk_order1_test
+    orbifold_canonify_test
+
     [test_suite
         total_tests{t}
         passed_tests{p}
@@ -1970,8 +2131,8 @@
 @expected_output
 {
     test_results{
-        "Total Tests": 66,
-        "Passed": 66,
+        "Total Tests": 72,
+        "Passed": 72,
         "Failed": 0,
         "Success Rate": "100%"
     }

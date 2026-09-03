@@ -39,6 +39,7 @@ This implementation demonstrates how neural network algorithms can be expressed 
 - **OpenPsi**: Dörner Psi motivational system — demands/drives, goal hierarchy, modulators, action selection, satisfaction feedback that drives the a9nn emotion unit
 - **Unified Cognitive Cycle**: the a9nn EchoBeats spine with PLN (REASON), OpenPsi (EMOTE) and AtomSpace (RECALL/INTEGRATE) overlaid — an agent that *reasons, wants and remembers*
 - **Arity Topologies**: mixed-radix membrane bases (`[2]^n` binary, `[3]^n` ternary, `[2|2]^n` quaternionic, `[5]^n` quinternary) executing heterogeneous ops in one parallel step; Matula/prime-power indexing of membrane trees; partition-function root selection; elementary differentials via product/chain rules
+- **P-Systems ↔ B-Series Bridge**: rooted trees and membrane nests are the same combinatorial object, so evolution and gradient descent run in one parallel step; elementary differentials get exact integer (Matula) expressions as the gradient basis; RK order conditions as finite tree sums; orbifold quotient = "natural selection as root selection"
 
 ## Installation
 
@@ -445,6 +446,27 @@ whose partition function performs "natural selection as root selection".
 @module partition_selection       /* Z over free hyper-multiset -> root    */
 ```
 
+### P-Systems ↔ B-Series Bridge (bseries.pli)
+
+The rooted trees of a B-series (Runge-Kutta elementary differentials) and
+membrane nests are the *same* combinatorial object (nested parentheses ↔
+ordered rooted trees). This module plants trees in their nests and threads
+branches through complementary nests so P-System **evolution** and B-series
+**gradient descent** run in the same maximally-parallel step — uniting the two
+principal adaptation techniques of ML. Elementary differentials (and the
+j-surfaces of the gradient basis) get exact integer expressions via Matula
+numbers; the orbifold quotient makes "natural selection" act as *root*
+selection.
+
+#### Modules
+```plingua
+@module tree_nest_bridge            /* plant tree in nest; thread branches */
+@module elementary_weights          /* order/density/symmetry -> b=1/(sg)  */
+@module bseries_gradient_step(lr)   /* w <- w - lr*grad/(s*g): flow=update */
+@module rk_order_conditions         /* order 1..3 as finite tree sums      */
+@module orbifold_quotient           /* canonify (min Matula); root select  */
+```
+
 ### Inference
 
 #### Predict
@@ -590,8 +612,8 @@ plingua test_nn.pli
 plingua test_extensions.pli
 
 # Expected output:
-# Total Tests: 66
-# Passed: 66
+# Total Tests: 72
+# Passed: 72
 # Failed: 0
 # Success Rate: 100%
 ```
@@ -640,6 +662,7 @@ plingua test_extensions.pli
 - ✅ OpenPsi demand urgency, action selection, satisfaction and emotion bridge
 - ✅ Unified cycle: RECALL premises, REASON conclusion, EMOTE bridge, LEARN revision, INTEGRATE persistence
 - ✅ Mixed-radix lane counts, Matula leaf/chain/product indexing, differential orders, partition selection
+- ✅ B-Series bridge: tree↔nest planting, elementary weights, gradient step, RK order-1, orbifold canonify
 
 ## Running Demos
 
@@ -852,6 +875,7 @@ Completed extensions:
 - [x] OpenPsi motivational system (demands, goals, action selection, emotion bridge) — `openpsi.pli`
 - [x] Unified cognitive cycle (PLN + OpenPsi + AtomSpace over the EchoBeats spine) — `unified.pli`
 - [x] Membrane arity topologies (mixed-radix bases, Matula indexing, partition selection) — `topology.pli`
+- [x] P-Systems ↔ B-Series bridge (shared tree/nest topology, gradient descent as ODE flow, orbifold root selection) — `bseries.pli`
 
 ## References
 
@@ -899,7 +923,7 @@ The following modules extend the core implementation with advanced features:
 | `layers.pli` | LookupTable (embedding), Bilinear, SparseLinear, Xavier/He initialization |
 | `attention.pli` | Scaled dot-product attention, multi-head attention, transformer encoder block, native batch processing |
 | `snp.pli` | Spiking Neural P Systems: SN P neurons, synapses, spike-train encoding, rate-coded bridge, SN P XOR |
-| `test_extensions.pli` | 66 tests covering all extension, v2.1, v2.2, v2.3, v2.4 and v2.5 modules |
+| `test_extensions.pli` | 72 tests covering all extension, v2.1, v2.2, v2.3, v2.4, v2.5 and v2.6 modules |
 
 ## Extensions (v2.2)
 
@@ -930,6 +954,12 @@ The following modules extend the core implementation with advanced features:
 |--------|-------------|
 | `unified.pli` | Unified cognitive cycle: the a9nn EchoBeats spine with PLN (REASON), OpenPsi (EMOTE) and AtomSpace (RECALL/INTEGRATE) overlaid — the agent reasons, wants and remembers. `uni_recall`/`uni_reason`/`uni_emote`/`uni_learn`/`uni_integrate` beat overlays + `unified_agent` composite. Counterpart of ReZorg/plingua `opencog_unified_agi.pli`. |
 | `topology.pli` | Membrane arity topologies: mixed-radix parallel bases (`binary/ternary/quaternionic/quinternary`, i.e. `[2]^n`/`[3]^n`/`[2|2]^n`/`[5]^n`) executing heterogeneous ops in one step; Matula/prime-power indexing of membrane trees (rooted-tree ↔ prime-factorisation); elementary differentials via product (`k*r+1`) and chain (`r+s`) rules; partition-function root selection over free hyper-multisets. |
+
+## Extensions (v2.6)
+
+| Module | Description |
+|--------|-------------|
+| `bseries.pli` | P-Systems ↔ B-Series bridge: rooted trees planted in membrane nests (shared topology), branches threaded through complementary nests so interfaces coincide. `tree_nest_bridge`, `elementary_weights` (order/density/symmetry → `b(t)=1/(σ·γ)` from Matula integers), `bseries_gradient_step` (gradient descent = ODE flow: `w ← w − lr·grad/(σ·γ)`), `rk_order_conditions` (order 1–3 as finite tree sums), `orbifold_quotient` (canonify to minimal Matula; natural selection as root selection). Unites P-System evolution with B-series gradient descent in one maximally-parallel step. |
 
 ### Looking ahead: nD membranes and parallel ledgers
 

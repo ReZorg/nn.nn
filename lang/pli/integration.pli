@@ -67,6 +67,11 @@
             module{unified,               "1.0.0", [a9nn, atomspace, pln,
                                                     openpsi, integration]}
             module{topology,              "1.0.0", [integration]}
+
+            /* v2.6 extension modules */
+            module{bseries,               "1.0.0", [topology,
+                                                    backpropagation,
+                                                    integration]}
         ]'main
     }
 
