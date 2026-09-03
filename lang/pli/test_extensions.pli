@@ -32,6 +32,8 @@
 @import "transformer_decoder.pli"
 @import "atomspace.pli"
 @import "a9nn.pli"
+@import "pln.pli"
+@import "openpsi.pli"
 @import "test_nn.pli"   /* reuse test_framework */
 
 /* ============================================================================
@@ -1331,6 +1333,205 @@
 }
 
 /* ============================================================================
+ * PLN TESTS
+ * Probabilistic inference over the AtomSpace.  Strength/confidence are
+ * integers scaled by 100.
+ * ============================================================================ */
+
+@test pln_deduction_test
+{
+    @description "Deduction A->B, B->C |- A->C : s = sAB*sBC/100, c=min*90%"
+
+    @setup
+    {
+        [test_pln
+            imp{cat, animal, 90, 80}     /* cat->animal  s=0.90 c=0.80 */
+            imp{animal, mortal, 80, 60}  /* animal->mortal s=0.80 c=0.60 */
+        ]'main
+    }
+
+    @rules
+    {
+        /* s = 90*80/100 = 72 ;  c = min(80,60)*90/100 = 54 */
+        [imp{cat, animal, 90, 80}, imp{animal, mortal, 80, 60}]'test_pln ->
+            [imp{cat, animal, 90, 80}, imp{animal, mortal, 80, 60},
+             deduce{cat, mortal, 72, 54}]'test_pln
+
+        assert_equal("pln_deduce_strength", 72, deduce_s{cat, mortal})
+        assert_equal("pln_deduce_confidence", 54, deduce_c{cat, mortal})
+    }
+}
+
+@test pln_induction_test
+{
+    @description "Induction A->B, A->C |- B->C : s = sAB*sAC/100"
+
+    @setup
+    {
+        [test_pln
+            imp{cat, furry, 80, 70}      /* cat->furry */
+            imp{cat, pet, 50, 60}        /* cat->pet */
+        ]'main
+    }
+
+    @rules
+    {
+        /* s = 80*50/100 = 40 ;  c = min(70,60)*80/100 = 48 */
+        [imp{cat, furry, 80, 70}, imp{cat, pet, 50, 60}]'test_pln ->
+            [imp{cat, furry, 80, 70}, imp{cat, pet, 50, 60},
+             induce{furry, pet, 40, 48}]'test_pln
+
+        assert_equal("pln_induce_strength", 40, induce_s{furry, pet})
+    }
+}
+
+@test pln_modus_ponens_test
+{
+    @description "Modus ponens A, A->B |- B : s = sA*sAB/100"
+
+    @setup
+    {
+        [test_pln
+            tv{90, 100}                  /* A (cat) true at 0.90 */
+            imp{cat, animal, 80, 90}     /* cat->animal 0.80 */
+        ]'main
+    }
+
+    @rules
+    {
+        /* s = 90*80/100 = 72 ;  c = min(100,90) = 90 */
+        [tv{90, 100}, imp{cat, animal, 80, 90}]'test_pln ->
+            [tv{90, 100}, imp{cat, animal, 80, 90},
+             mp{animal, 72, 90}]'test_pln
+
+        assert_equal("pln_mp_strength", 72, mp_s{animal})
+    }
+}
+
+@test pln_negation_test
+{
+    @description "Negation A |- NOT A : s = 100 - sA"
+
+    @setup
+    {
+        [test_pln
+            tv{30, 80}                   /* A true at 0.30 */
+            want_not{a}
+        ]'main
+    }
+
+    @rules
+    {
+        [tv{30, 80}, want_not{a}]'test_pln ->
+            [tv{30, 80}, neg{a, 70, 80}]'test_pln
+
+        assert_equal("pln_neg_strength", 70, neg_s{a})
+    }
+}
+
+/* ============================================================================
+ * OPENPSI TESTS
+ * Demands, goal activation, action selection, satisfaction, emotion bridge.
+ * ============================================================================ */
+
+@test psi_demand_urgency_test
+{
+    @description "Demand accrues tension and becomes urgent at threshold"
+
+    @setup
+    {
+        [test_psi
+            demand{3, 58, 8, 60}   /* exploration: 0.58, +0.08/step, thr 0.60 */
+        ]'main
+    }
+
+    @rules
+    {
+        /* 58 + 8 = 66 >= 60 -> urgent */
+        [demand{3, 58, 8, 60}]'test_psi ->
+            [demand{3, 66, 8, 60}]'test_psi
+
+        [demand{3, 66, 8, 60}]'test_psi ->
+            [demand{3, 66, 8, 60}, urgent{3}]'test_psi
+            where 66 >= 60
+
+        assert_equal("psi_demand_accrues", 66, demand_tension{3})
+        assert_equal("psi_demand_urgent", 1, urgent_flag{3})
+    }
+}
+
+@test psi_action_selection_test
+{
+    @description "Action selection picks the active goal with max relief"
+
+    @setup
+    {
+        [test_psi
+            urgent{3}
+            active_goal{g1, 3, 40}
+            active_goal{g2, 3, 75}
+            active_goal{g3, 3, 50}
+        ]'main
+    }
+
+    @rules
+    {
+        /* g2 (relief 75) dominates -> its action token is emitted. */
+        [active_goal{g1, 3, 40}, active_goal{g2, 3, 75},
+         active_goal{g3, 3, 50}]'test_psi ->
+            [selected{g2}, action_token{g2, 3, 75}]'test_psi
+
+        assert_equal("psi_selects_max_relief", 75, selected_relief{1})
+    }
+}
+
+@test psi_satisfaction_test
+{
+    @description "Reward on an addressed demand lowers its tension"
+
+    @setup
+    {
+        [test_psi
+            action_done{g2, 3}
+            reward{30}
+            demand{3, 66, 8, 60}
+        ]'main
+    }
+
+    @rules
+    {
+        /* 66 - 30 = 36 (floor 0); below threshold so urgency clears. */
+        [action_done{g2, 3}, reward{30}, demand{3, 66, 8, 60}]'test_psi ->
+            [reward{30}, demand{3, 36, 8, 60}]'test_psi
+
+        assert_equal("psi_tension_reduced", 36, demand_tension{3})
+    }
+}
+
+@test psi_emotion_bridge_test
+{
+    @description "Urgent exploration raises a9nn curiosity via activation"
+
+    @setup
+    {
+        [test_agent
+            urgent{3}                  /* exploration urgent */
+            mod{activation, 60}        /* activation 0.60 */
+            emo{1, 40}                 /* curiosity 0.40 */
+        ]'main
+    }
+
+    @rules
+    {
+        /* curiosity += activation/20 = 60/20 = 3  ->  43 */
+        [urgent{3}, mod{activation, 60}, emo{1, 40}]'test_agent ->
+            [urgent{3}, mod{activation, 60}, emo{1, 43}]'test_agent
+
+        assert_equal("psi_curiosity_bridge", 43, emo{1})
+    }
+}
+
+/* ============================================================================
  * TEST RUNNER
  * ============================================================================ */
 
@@ -1420,6 +1621,18 @@
     planner_argmax_test
     integrate_episode_test
 
+    /* PLN probabilistic inference */
+    pln_deduction_test
+    pln_induction_test
+    pln_modus_ponens_test
+    pln_negation_test
+
+    /* OpenPsi motivational system */
+    psi_demand_urgency_test
+    psi_action_selection_test
+    psi_satisfaction_test
+    psi_emotion_bridge_test
+
     [test_suite
         total_tests{t}
         passed_tests{p}
@@ -1445,8 +1658,8 @@
 @expected_output
 {
     test_results{
-        "Total Tests": 46,
-        "Passed": 46,
+        "Total Tests": 54,
+        "Passed": 54,
         "Failed": 0,
         "Success Rate": "100%"
     }

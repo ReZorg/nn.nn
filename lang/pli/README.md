@@ -35,6 +35,8 @@ This implementation demonstrates how neural network algorithms can be expressed 
 - **Transformer Decoder**: Causal masking, masked self-attention, cross-attention, decoder stacks, positional encodings, greedy decoding
 - **AtomSpace**: OpenCog-style hypergraph knowledge base — atoms as membranes, truth/attention values, ECAN attention spreading, Hebbian learning, pattern matching, attentional focus
 - **a9nn NNECCO Agent**: full cognitive architecture — Echo State Reservoir, 12-step EchoBeats loop, emotion processing, consciousness layers (L0–L3), episodic memory, parallel LLaMA pool, hardware-style registers
+- **PLN**: Probabilistic Logic Networks — deduction, induction, abduction, revision, conjunction, disjunction, negation, modus ponens over the AtomSpace (maximally-parallel forward chaining)
+- **OpenPsi**: Dörner Psi motivational system — demands/drives, goal hierarchy, modulators, action selection, satisfaction feedback that drives the a9nn emotion unit
 
 ## Installation
 
@@ -366,6 +368,41 @@ maximally-parallel rule system phase-locked by a program-counter register.
 /* 9 LEARN    10 REFLECT 11 EXPRESS  12 INTEGRATE          */
 ```
 
+### PLN (pln.pli)
+
+Probabilistic Logic Networks over `atomspace.pli`: OpenCog's inference engine
+as membrane rules. Counterpart of ReZorg/plingua's `opencog_pln.pli`, in the
+pure `@module`/`@rules` dialect. Forward chaining is a **single
+maximally-parallel transition**, not a loop.
+
+#### Inference Rules
+```plingua
+@module pln_deduction    /* A->B, B->C |- A->C : s = sAB*sBC/100          */
+@module pln_induction    /* A->B, A->C |- B->C : s = sAB*sAC/100          */
+@module pln_abduction    /* A->B, B    |- A    : tentative (c * 50/100)   */
+@module pln_operators    /* AND/OR/NOT/modus-ponens truth-value formulas  */
+@module pln_revision     /* merge duplicate conclusions (count-based TV)  */
+@module pln_forward_chain(max_cycles)  /* bounded parallel forward chain  */
+```
+
+### OpenPsi (openpsi.pli)
+
+Dörner Psi motivational system: demands (competence, integrity, exploration,
+affiliation) accrue tension, become urgent, activate goals, and drive action
+selection. **Closes the loop with a9nn**: modulators map onto the a9nn
+`emotion_unit` channels, so motivation is *felt* and outcomes feed back as
+reward.
+
+#### Subsystems
+```plingua
+@module psi_demands           /* demand{id, tension, rate, threshold}     */
+@module psi_goals             /* urgent demand -> active_goal             */
+@module psi_action_selection  /* argmax expected relief -> action_token   */
+@module psi_satisfaction      /* reward lowers demand tension (feedback)  */
+@module psi_modulators        /* activation/resolution/... -> emotion     */
+@model  openpsi_system        /* composite, psi_pc-phase-locked           */
+```
+
 ### Inference
 
 #### Predict
@@ -511,8 +548,8 @@ plingua test_nn.pli
 plingua test_extensions.pli
 
 # Expected output:
-# Total Tests: 46
-# Passed: 46
+# Total Tests: 54
+# Passed: 54
 # Failed: 0
 # Success Rate: 100%
 ```
@@ -557,6 +594,8 @@ plingua test_extensions.pli
 - ✅ Emotion update and consciousness REFLECT transitions
 - ✅ Episodic memory push/recall and LLaMA least-load dispatch
 - ✅ PLAN argmax action selection and INTEGRATE episode logging
+- ✅ PLN deduction, induction, modus ponens and negation truth values
+- ✅ OpenPsi demand urgency, action selection, satisfaction and emotion bridge
 
 ## Running Demos
 
@@ -765,6 +804,8 @@ Completed extensions:
 - [x] Full transformer decoder with causal masking — `transformer_decoder.pli`
 - [x] AtomSpace hypergraph knowledge base (ECAN, Hebbian, matcher) — `atomspace.pli`
 - [x] a9nn NNECCO cognitive agent (reservoir, EchoBeats, emotion, LLaMA pool) — `a9nn.pli`
+- [x] PLN probabilistic inference (deduction/induction/abduction/modus-ponens) — `pln.pli`
+- [x] OpenPsi motivational system (demands, goals, action selection, emotion bridge) — `openpsi.pli`
 
 ## References
 
@@ -812,7 +853,7 @@ The following modules extend the core implementation with advanced features:
 | `layers.pli` | LookupTable (embedding), Bilinear, SparseLinear, Xavier/He initialization |
 | `attention.pli` | Scaled dot-product attention, multi-head attention, transformer encoder block, native batch processing |
 | `snp.pli` | Spiking Neural P Systems: SN P neurons, synapses, spike-train encoding, rate-coded bridge, SN P XOR |
-| `test_extensions.pli` | 46 tests covering all extension, v2.1, v2.2 and v2.3 modules |
+| `test_extensions.pli` | 54 tests covering all extension, v2.1, v2.2, v2.3 and v2.4 modules |
 
 ## Extensions (v2.2)
 
@@ -829,6 +870,31 @@ The following modules extend the core implementation with advanced features:
 |--------|-------------|
 | `atomspace.pli` | OpenCog-style hypergraph knowledge base: atom nodes/links as membranes (structural nesting), truth values with count-based revision, attention values (STI/LTI), ECAN attention spreading as conserved-currency antiport exchange, Hebbian learning, pattern matching, derived attentional focus. Mirrors `lang/a9nn/AtomSpace.lua`. |
 | `a9nn.pli` | NNECCO cognitive agent: Echo State Reservoir membrane (leaky-integrator neurons, spectral radius), 12-beat EchoBeats loop phase-locked by a PC register, emotion processing unit (8 channels), consciousness layers L0–L3 with loss-driven meta-cognition, prioritised episodic memory, parallel LLaMA pool (least-load antiport dispatch, stub mode), hardware-style registers R0–R4/PC/STA. Mirrors `lang/a9nn/NNECCOAgent.lua`. |
+
+## Extensions (v2.4)
+
+| Module | Description |
+|--------|-------------|
+| `pln.pli` | Probabilistic Logic Networks over the AtomSpace: deduction, induction, abduction, revision, conjunction, disjunction, negation, modus ponens with SimpleTruthValue strength/confidence formulas; maximally-parallel forward chaining (`pln_forward_chain`). Counterpart of ReZorg/plingua `opencog_pln.pli`. |
+| `openpsi.pli` | Dörner Psi motivational system: demands (competence/integrity/exploration/affiliation) with accrual→urgency, goal activation, argmax action selection, satisfaction feedback, and modulators that drive the a9nn `emotion_unit`. Counterpart of ReZorg/plingua `opencog_openpsi.pli`. |
+
+### Looking ahead: nD membranes and parallel ledgers
+
+Two directions this port is positioned for:
+
+- **nD generalisation.** 1D/2D/3D spatial models (as in ReZorg's M-Lingua
+  `.mli`) generalise to *n-dimensional* membrane arrangements. A future
+  dialect (candidate extensions `.dli`/`.vli` — both currently free) would
+  make dimension a parameter rather than a fixed grid, so convolution,
+  pooling and spatial self-assembly are rank-generic (cf. `lang/pl/nn_nd.pl`,
+  which already does rank-parametric convolution in Prolog).
+
+- **Massively-parallel structured computation.** Because P-System rules are
+  maximally parallel, a chart of accounts for a whole supply chain — a
+  thousand entities, each a membrane holding `account{acct, balance}` objects
+  — settles *all* inter-entity transfers in a constant number of membrane
+  steps, independent of entity count (see demo 22, `parallel_ledger_demo`).
+  Double-entry conservation holds by construction; O(1) steps, not O(n).
 
 ### Weight Interchange Format
 

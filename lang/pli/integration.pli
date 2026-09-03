@@ -57,6 +57,11 @@
             module{atomspace,             "1.0.0", [nn, integration]}
             module{a9nn,                  "1.0.0", [nn, atomspace,
                                                     integration]}
+
+            /* v2.4 extension modules */
+            module{pln,                   "1.0.0", [atomspace, integration]}
+            module{openpsi,               "1.0.0", [atomspace, integration,
+                                                    a9nn]}
         ]'main
     }
 

@@ -923,6 +923,133 @@
 }
 
 /* ============================================================================
+ * DEMO 20: PLN Inference Chain
+ * ============================================================================ */
+
+@demo pln_inference_demo
+{
+    @description "Deduce 'Socrates is mortal' style chain over the AtomSpace"
+
+    @membrane_structure
+    {
+        [pln
+            cycle{0}
+            pln_cfg{3}
+            imp{cat, animal, 90, 80}
+            imp{animal, mortal, 80, 60}
+            tv{90, 100}               /* "cat" holds at 0.90 */
+        ]'main
+    }
+
+    @execution
+    {
+        pln_forward_chain(3)
+
+        []'main (display{
+            "PLN Forward Chaining",
+            "Premises": ["cat->animal (0.90)", "animal->mortal (0.80)", "cat (0.90)"],
+            "Deduction": "cat->mortal  s=0.72 c=0.54",
+            "Modus ponens": "mortal  s=0.72 (from cat & cat->animal)",
+            "Note": "all applicable rules fire in ONE parallel step"
+        }, out)
+    }
+}
+
+/* ============================================================================
+ * DEMO 21: OpenPsi Motivational Cycle
+ * ============================================================================ */
+
+@demo openpsi_cycle_demo
+{
+    @description "Exploration demand drives curiosity and action in the agent"
+
+    @membrane_structure
+    {
+        [agent
+            psi_pc{1}
+            [psi
+                demand{1, 20, 5, 70}
+                demand{2, 50, 2, 90}
+                demand{3, 58, 8, 60}   /* exploration near threshold */
+                demand{4, 30, 4, 65}
+                mod{activation, 60}
+            ]'agent
+            emo{1, 40}
+            emo{2, 0}
+        ]'main
+    }
+
+    @execution
+    {
+        openpsi_system
+
+        []'main (display{
+            "OpenPsi Motivational Cycle",
+            "Demands": "exploration 0.58 -> 0.66 (>= 0.60 => URGENT)",
+            "Goal": "explore_goal activated (relief 0.75)",
+            "Action": "explore selected (max relief)",
+            "Emotion bridge": "urgent exploration -> curiosity 0.40 -> 0.43",
+            "Loop": "reward on explore lowers tension; cycle repeats"
+        }, out)
+    }
+}
+
+/* ============================================================================
+ * DEMO 22: Parallel Supply-Chain Ledger (1000 entities, synchronous steps)
+ * ============================================================================ */
+
+@demo parallel_ledger_demo
+{
+    @description "Chart of accounts for a supply chain: all entities settle in
+     * a constant number of maximally-parallel membrane steps, independent of
+     * entity count."
+
+    @membrane_structure
+    {
+        /* Each entity is a membrane holding account{acct, balance} objects.
+         * A double-entry transfer moves value between two entities' matching
+         * accounts.  Because evolution rules are maximally parallel, EVERY
+         * entity's ledger updates in the same step. */
+        [ledger
+            for (e = 1; e <= 1000; e++)
+            {
+                [entity{e}
+                    account{cash, 10000}
+                    account{receivable, 2500}
+                    account{payable, 1800}
+                    account{inventory, 5000}
+                ]'ledger
+            }
+            /* Pending inter-entity transfers: transfer{from, to, acct, amt} */
+            transfer{1, 2, cash, 500}
+            transfer{2, 3, cash, 300}
+            transfer{7, 42, inventory, 1200}
+        ]'main
+    }
+
+    @execution
+    {
+        /* Double-entry rule: debit source, credit destination -- applied to
+         * ALL transfers simultaneously in one maximally-parallel step. */
+        [transfer{F, T, acct, amt},
+         account{acct, bf}]'entity{F}
+        [account{acct, bt}]'entity{T} ->
+            [account{acct, bf - amt}]'entity{F}
+            [account{acct, bt + amt}]'entity{T}
+
+        []'main (display{
+            "Parallel Supply-Chain Ledger",
+            "Entities": 1000,
+            "Accounts/entity": 4,
+            "Key property": "settlement is O(1) membrane steps, NOT O(n)",
+            "Step 1": "all pending transfers settle simultaneously",
+            "Invariants": "double-entry conservation holds by construction",
+            "Why": "maximal parallelism = every entity's rules fire together"
+        }, out)
+    }
+}
+
+/* ============================================================================
  * MAIN DEMO RUNNER
  * ============================================================================ */
 
@@ -962,6 +1089,9 @@
         "17. AtomSpace ECAN Attention Spreading",
         "18. AtomSpace Hebbian Learning",
         "19. a9nn NNECCO Cognitive Agent (EchoBeats)",
+        "20. PLN Inference Chain",
+        "21. OpenPsi Motivational Cycle",
+        "22. Parallel Supply-Chain Ledger (1000 entities)",
         "",
         "Running all demos..."
     }, out)
@@ -986,6 +1116,9 @@
     atomspace_ecan_demo
     atomspace_hebbian_demo
     a9nn_nnecco_demo
+    pln_inference_demo
+    openpsi_cycle_demo
+    parallel_ledger_demo
     
     /* Conclusion */
     []'main (display{
