@@ -1050,6 +1050,104 @@
 }
 
 /* ============================================================================
+ * DEMO 23: Unified Cognitive Cycle
+ * ============================================================================ */
+
+@demo unified_cycle_demo
+{
+    @description "One full cycle where the agent reasons (PLN), wants (OpenPsi)
+     * and remembers (AtomSpace) through the EchoBeats spine"
+
+    @membrane_structure
+    {
+        [agent
+            pc{1}
+            cycle{0}
+            layer{1}
+            raw_input{cat_is_an_animal}
+            reward{70}
+            [psi
+                demand{3, 58, 8, 60}
+                mod{activation, 70}
+            ]'agent
+            emo{1, 40}
+            emo{2, 0}
+            [atomspace
+                [atom{1} atype{concept} aname{cat} in_focus{} ]'atomspace
+            ]'agent
+            imp{cat, animal, 90, 80}
+            imp{animal, mortal, 80, 60}
+        ]'main
+    }
+
+    @execution
+    {
+        uni_recall(50)
+        uni_reason
+        uni_emote
+        uni_learn
+        uni_integrate
+
+        []'main (display{
+            "Unified Cognitive Cycle",
+            "RECALL": "focus surfaces 'cat' as premise",
+            "REASON": "PLN deduces cat->mortal (s=0.72)",
+            "EMOTE": "urgent exploration raises curiosity (motivation felt)",
+            "LEARN": "reward 0.70 -> loss 0.30; conclusions revise AtomSpace TVs",
+            "INTEGRATE": "thought persisted as learned implication atom",
+            "Result": "an agent that reasons, wants and remembers"
+        }, out)
+    }
+}
+
+/* ============================================================================
+ * DEMO 24: Mixed-Radix Parallel Operations (membrane arity topologies)
+ * ============================================================================ */
+
+@demo mixed_radix_demo
+{
+    @description "Binary, ternary, quaternionic and quinternary bases execute
+     * their ops in the SAME maximally-parallel step"
+
+    @membrane_structure
+    {
+        [topology
+            binary_basis(4)        /* [2]^4  = 16 lanes   */
+            ternary_basis(3)       /* [3]^3  = 27 lanes   */
+            quaternionic_basis(2)  /* [2|2]^2 = 16 states */
+            quinternary_basis(2)   /* [5]^2  = 25 lanes   */
+
+            /* A membrane tree to be Matula-indexed */
+            leaf{a}
+            parent{root, a}
+            prime{1, 2}
+
+            /* Candidate topologies for partition selection */
+            fit{t1, 40}
+            fit{t2, 85}
+            fit{t3, 60}
+        ]'main
+    }
+
+    @execution
+    {
+        matula_index
+        partition_selection
+
+        []'main (display{
+            "Mixed-Radix Membrane Parallelism",
+            "[2]^4 binary": "16 lanes, one step",
+            "[3]^3 ternary": "27 lanes, one step",
+            "[2|2]^2 quaternionic": "16 orthogonal states, one step",
+            "[5]^2 quinternary": "25 lanes, one step",
+            "Matula index": "root over a leaf -> p_1 = 2 (canonical shape id)",
+            "Partition selection": "fittest topology t2 (0.85) selected as root",
+            "Insight": "membrane shape = arity of a categorical logic;"
+        }, out)
+    }
+}
+
+/* ============================================================================
  * MAIN DEMO RUNNER
  * ============================================================================ */
 
@@ -1092,6 +1190,8 @@
         "20. PLN Inference Chain",
         "21. OpenPsi Motivational Cycle",
         "22. Parallel Supply-Chain Ledger (1000 entities)",
+        "23. Unified Cognitive Cycle (reason + want + remember)",
+        "24. Mixed-Radix Parallel Ops (membrane arity topologies)",
         "",
         "Running all demos..."
     }, out)
@@ -1119,6 +1219,8 @@
     pln_inference_demo
     openpsi_cycle_demo
     parallel_ledger_demo
+    unified_cycle_demo
+    mixed_radix_demo
     
     /* Conclusion */
     []'main (display{

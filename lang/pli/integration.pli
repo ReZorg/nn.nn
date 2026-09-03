@@ -62,6 +62,11 @@
             module{pln,                   "1.0.0", [atomspace, integration]}
             module{openpsi,               "1.0.0", [atomspace, integration,
                                                     a9nn]}
+
+            /* v2.5 extension modules */
+            module{unified,               "1.0.0", [a9nn, atomspace, pln,
+                                                    openpsi, integration]}
+            module{topology,              "1.0.0", [integration]}
         ]'main
     }
 

@@ -37,6 +37,8 @@ This implementation demonstrates how neural network algorithms can be expressed 
 - **a9nn NNECCO Agent**: full cognitive architecture — Echo State Reservoir, 12-step EchoBeats loop, emotion processing, consciousness layers (L0–L3), episodic memory, parallel LLaMA pool, hardware-style registers
 - **PLN**: Probabilistic Logic Networks — deduction, induction, abduction, revision, conjunction, disjunction, negation, modus ponens over the AtomSpace (maximally-parallel forward chaining)
 - **OpenPsi**: Dörner Psi motivational system — demands/drives, goal hierarchy, modulators, action selection, satisfaction feedback that drives the a9nn emotion unit
+- **Unified Cognitive Cycle**: the a9nn EchoBeats spine with PLN (REASON), OpenPsi (EMOTE) and AtomSpace (RECALL/INTEGRATE) overlaid — an agent that *reasons, wants and remembers*
+- **Arity Topologies**: mixed-radix membrane bases (`[2]^n` binary, `[3]^n` ternary, `[2|2]^n` quaternionic, `[5]^n` quinternary) executing heterogeneous ops in one parallel step; Matula/prime-power indexing of membrane trees; partition-function root selection; elementary differentials via product/chain rules
 
 ## Installation
 
@@ -403,6 +405,46 @@ reward.
 @model  openpsi_system        /* composite, psi_pc-phase-locked           */
 ```
 
+### Unified Cognitive Cycle (unified.pli)
+
+The integration layer: the a9nn EchoBeats spine with PLN, OpenPsi and the
+AtomSpace overlaid so the agent *reasons, wants and remembers*. Counterpart of
+ReZorg/plingua's `opencog_unified_agi.pli`. Each subsystem stays in its own
+membrane; the PC register phase-locks them and objects flow across boundaries.
+
+#### Beat overlays
+```plingua
+@module uni_recall(focus_threshold)  /* RECALL  <- AtomSpace ECAN focus   */
+@module uni_reason                   /* REASON  <- PLN forward chain       */
+@module uni_emote                    /* EMOTE   <- OpenPsi modulators      */
+@module uni_learn                    /* LEARN   <- PLN revision + RL loss  */
+@module uni_integrate                /* INTEGRATE-> persist learned atoms  */
+@model  unified_agent(state_size, action_size, reservoir_n,
+                      num_llama, base_port, consciousness0)
+```
+
+### Arity Topologies (topology.pli)
+
+Makes concrete the observation that a membrane tree's *shape* is
+simultaneously a rooted tree (Matula/prime-factorisation number), the arity of
+a categorical logic, a mixed-radix parallel basis, and an evolutionary engine
+whose partition function performs "natural selection as root selection".
+
+#### Mixed-radix bases (heterogeneous parallel ops in one step)
+```plingua
+@module binary_basis(n)        /* [2]^n    -> 2^n boolean lanes           */
+@module ternary_basis(n)       /* [3]^n    -> 3^n trit lanes              */
+@module quaternionic_basis(n)  /* [2|2]^n  -> 4^n orthogonal pairs        */
+@module quinternary_basis(n)   /* [5]^n    -> 5^n lanes                   */
+```
+
+#### Indexing, differentials, selection
+```plingua
+@module matula_index              /* rooted tree <-> prime factorisation   */
+@module elementary_differentials  /* product (k*r+1) & chain (r+s) rules   */
+@module partition_selection       /* Z over free hyper-multiset -> root    */
+```
+
 ### Inference
 
 #### Predict
@@ -548,8 +590,8 @@ plingua test_nn.pli
 plingua test_extensions.pli
 
 # Expected output:
-# Total Tests: 54
-# Passed: 54
+# Total Tests: 66
+# Passed: 66
 # Failed: 0
 # Success Rate: 100%
 ```
@@ -596,6 +638,8 @@ plingua test_extensions.pli
 - ✅ PLAN argmax action selection and INTEGRATE episode logging
 - ✅ PLN deduction, induction, modus ponens and negation truth values
 - ✅ OpenPsi demand urgency, action selection, satisfaction and emotion bridge
+- ✅ Unified cycle: RECALL premises, REASON conclusion, EMOTE bridge, LEARN revision, INTEGRATE persistence
+- ✅ Mixed-radix lane counts, Matula leaf/chain/product indexing, differential orders, partition selection
 
 ## Running Demos
 
@@ -806,6 +850,8 @@ Completed extensions:
 - [x] a9nn NNECCO cognitive agent (reservoir, EchoBeats, emotion, LLaMA pool) — `a9nn.pli`
 - [x] PLN probabilistic inference (deduction/induction/abduction/modus-ponens) — `pln.pli`
 - [x] OpenPsi motivational system (demands, goals, action selection, emotion bridge) — `openpsi.pli`
+- [x] Unified cognitive cycle (PLN + OpenPsi + AtomSpace over the EchoBeats spine) — `unified.pli`
+- [x] Membrane arity topologies (mixed-radix bases, Matula indexing, partition selection) — `topology.pli`
 
 ## References
 
@@ -853,7 +899,7 @@ The following modules extend the core implementation with advanced features:
 | `layers.pli` | LookupTable (embedding), Bilinear, SparseLinear, Xavier/He initialization |
 | `attention.pli` | Scaled dot-product attention, multi-head attention, transformer encoder block, native batch processing |
 | `snp.pli` | Spiking Neural P Systems: SN P neurons, synapses, spike-train encoding, rate-coded bridge, SN P XOR |
-| `test_extensions.pli` | 54 tests covering all extension, v2.1, v2.2, v2.3 and v2.4 modules |
+| `test_extensions.pli` | 66 tests covering all extension, v2.1, v2.2, v2.3, v2.4 and v2.5 modules |
 
 ## Extensions (v2.2)
 
@@ -877,6 +923,13 @@ The following modules extend the core implementation with advanced features:
 |--------|-------------|
 | `pln.pli` | Probabilistic Logic Networks over the AtomSpace: deduction, induction, abduction, revision, conjunction, disjunction, negation, modus ponens with SimpleTruthValue strength/confidence formulas; maximally-parallel forward chaining (`pln_forward_chain`). Counterpart of ReZorg/plingua `opencog_pln.pli`. |
 | `openpsi.pli` | Dörner Psi motivational system: demands (competence/integrity/exploration/affiliation) with accrual→urgency, goal activation, argmax action selection, satisfaction feedback, and modulators that drive the a9nn `emotion_unit`. Counterpart of ReZorg/plingua `opencog_openpsi.pli`. |
+
+## Extensions (v2.5)
+
+| Module | Description |
+|--------|-------------|
+| `unified.pli` | Unified cognitive cycle: the a9nn EchoBeats spine with PLN (REASON), OpenPsi (EMOTE) and AtomSpace (RECALL/INTEGRATE) overlaid — the agent reasons, wants and remembers. `uni_recall`/`uni_reason`/`uni_emote`/`uni_learn`/`uni_integrate` beat overlays + `unified_agent` composite. Counterpart of ReZorg/plingua `opencog_unified_agi.pli`. |
+| `topology.pli` | Membrane arity topologies: mixed-radix parallel bases (`binary/ternary/quaternionic/quinternary`, i.e. `[2]^n`/`[3]^n`/`[2|2]^n`/`[5]^n`) executing heterogeneous ops in one step; Matula/prime-power indexing of membrane trees (rooted-tree ↔ prime-factorisation); elementary differentials via product (`k*r+1`) and chain (`r+s`) rules; partition-function root selection over free hyper-multisets. |
 
 ### Looking ahead: nD membranes and parallel ledgers
 

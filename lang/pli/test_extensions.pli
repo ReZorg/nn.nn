@@ -34,6 +34,8 @@
 @import "a9nn.pli"
 @import "pln.pli"
 @import "openpsi.pli"
+@import "unified.pli"
+@import "topology.pli"
 @import "test_nn.pli"   /* reuse test_framework */
 
 /* ============================================================================
@@ -1532,6 +1534,300 @@
 }
 
 /* ============================================================================
+ * UNIFIED COGNITIVE CYCLE TESTS
+ * RECALL<-AtomSpace, REASON<-PLN, EMOTE<-OpenPsi, LEARN<-revision, INTEGRATE.
+ * ============================================================================ */
+
+@test uni_recall_premise_test
+{
+    @description "RECALL harvests in-focus atoms as premises for REASON"
+
+    @setup
+    {
+        [test_agent
+            pc{5}
+            [atom{1} in_focus{} ]'test_agent
+            [atom{2} in_focus{} ]'test_agent
+        ]'main
+    }
+
+    @rules
+    {
+        [pc{5}]'test_agent [in_focus{}]'atom{I} ->
+            [pc{5}]'test_agent (premise{I}, out)
+
+        [premise{1}]'test_agent [premise{2}]'test_agent ->
+            [premise_count{2}]'test_agent
+
+        assert_equal("uni_recall_premises", 2, premise_count{1})
+    }
+}
+
+@test uni_reason_conclusion_test
+{
+    @description "REASON deduces a transitive conclusion over recalled premises"
+
+    @setup
+    {
+        [test_agent
+            pc{6}
+            imp{cat, animal, 90, 80}
+            imp{animal, mortal, 80, 60}
+        ]'main
+    }
+
+    @rules
+    {
+        /* s = 90*80/100 = 72 ; c = min(80,60)*90/100 = 54 */
+        [pc{6}, imp{cat, animal, 90, 80}, imp{animal, mortal, 80, 60}]'test_agent ->
+            [pc{6}, imp{cat, animal, 90, 80}, imp{animal, mortal, 80, 60},
+             conclusion{cat, mortal, 72, 54}]'test_agent
+
+        assert_equal("uni_reason_strength", 72, conclusion_s{cat, mortal})
+    }
+}
+
+@test uni_emote_bridge_test
+{
+    @description "EMOTE: urgent exploration raises curiosity via activation"
+
+    @setup
+    {
+        [test_agent
+            pc{7}
+            urgent{3}
+            mod{activation, 80}
+            emo{1, 50}
+        ]'main
+    }
+
+    @rules
+    {
+        /* curiosity += activation/20 = 80/20 = 4  ->  54 */
+        [pc{7}, urgent{3}, mod{activation, 80}, emo{1, 50}]'test_agent ->
+            [pc{7}, urgent{3}, mod{activation, 80}, emo{1, 54}]'test_agent
+
+        assert_equal("uni_emote_curiosity", 54, emo{1})
+    }
+}
+
+@test uni_learn_revision_test
+{
+    @description "LEARN revises an existing implication's TV with the conclusion"
+
+    @setup
+    {
+        [test_agent
+            pc{9}
+            conclusion{cat, mortal, 60, 20}
+            [link{5} imp{cat, mortal, 72, 30} ]'test_agent
+        ]'main
+    }
+
+    @rules
+    {
+        /* s' = (72*30 + 60*20)/(30+20) = (2160+1200)/50 = 67
+         * c' = (30+20)*100/(30+20+100) = 5000/150 = 33 */
+        [pc{9}, conclusion{cat, mortal, 60, 20}]'test_agent
+        [imp{cat, mortal, 72, 30}]'link{5} ->
+            [pc{9}, conclusion{cat, mortal, 60, 20}]'test_agent
+            [imp{cat, mortal, 67, 33}]'link{5}
+
+        assert_equal("uni_learn_revised_strength", 67, revised_s{cat, mortal})
+    }
+}
+
+@test uni_reward_to_loss_test
+{
+    @description "LEARN maps reward to loss: loss = max(0, 100 - reward)"
+
+    @setup
+    {
+        [test_agent pc{9} reward{30}]'main
+    }
+
+    @rules
+    {
+        [pc{9}, reward{30}]'test_agent -> [pc{10}, loss{70}]'test_agent
+
+        assert_equal("uni_reward_loss", 70, loss{1})
+    }
+}
+
+@test uni_integrate_persist_test
+{
+    @description "INTEGRATE persists the thought as an implication atom"
+
+    @setup
+    {
+        [test_agent
+            pc{12}
+            thought{cat, mortal, 72, 54}
+        ]'main
+    }
+
+    @rules
+    {
+        [pc{12}, thought{cat, mortal, 72, 54}]'test_agent ->
+            [pc{12}, thought{cat, mortal, 72, 54}]'test_agent
+            [learned atype{impl} imp{cat, mortal, 72, 54} tv{72, 54}]'atomspace
+
+        assert_equal("uni_integrate_learned", 72, learned_s{cat, mortal})
+    }
+}
+
+/* ============================================================================
+ * MEMBRANE ARITY TOPOLOGY TESTS
+ * Mixed-radix bases, Matula/prime indexing, elementary differentials,
+ * partition-function root selection.
+ * ============================================================================ */
+
+@test radix_lane_count_test
+{
+    @description "Radix-b depth-n basis realises b^n lanes"
+
+    @setup
+    {
+        [test_basis2 radix{2} depth{4} lane_count{0}]'main   /* 2^4 = 16 */
+        [test_basis3 radix{3} depth{3} lane_count{0}]'main   /* 3^3 = 27 */
+        [test_basis5 radix{5} depth{2} lane_count{0}]'main   /* 5^2 = 25 */
+    }
+
+    @rules
+    {
+        [radix{2}, depth{4}, lane_count{0}]'test_basis2 ->
+            [radix{2}, depth{4}, lane_count{16}]'test_basis2
+        [radix{3}, depth{3}, lane_count{0}]'test_basis3 ->
+            [radix{3}, depth{3}, lane_count{27}]'test_basis3
+        [radix{5}, depth{2}, lane_count{0}]'test_basis5 ->
+            [radix{5}, depth{2}, lane_count{25}]'test_basis5
+
+        assert_equal("radix_binary_lanes", 16, lanes2{1})
+        assert_equal("radix_ternary_lanes", 27, lanes3{1})
+        assert_equal("radix_quinternary_lanes", 25, lanes5{1})
+    }
+}
+
+@test matula_leaf_test
+{
+    @description "A leaf membrane has Matula number 1"
+
+    @setup
+    {
+        [test_topo leaf{a}]'main
+    }
+
+    @rules
+    {
+        [leaf{a}]'test_topo -> [matula{a, 1}]'test_topo
+
+        assert_equal("matula_leaf", 1, matula{a})
+    }
+}
+
+@test matula_chain_test
+{
+    @description "Chain rule: a node over a child of Matula m gets p_m"
+
+    @setup
+    {
+        [test_topo
+            matula{leaf, 1}        /* leaf child has Matula 1 */
+            parent{root, leaf}
+            prime{1, 2}            /* p_1 = 2 */
+        ]'main
+    }
+
+    @rules
+    {
+        /* root's child has m=1, so root gets p_1 = 2 (a chain of 2). */
+        [matula{leaf, 1}, parent{root, leaf}, prime{1, 2}]'test_topo ->
+            [matula{root, 2}]'test_topo
+
+        assert_equal("matula_chain", 2, matula{root})
+    }
+}
+
+@test matula_product_test
+{
+    @description "Product rule: two children (a=1,b=2) give p_1*p_2 = 2*3 = 6"
+
+    @setup
+    {
+        [test_topo
+            matula{c1, 1}
+            matula{c2, 2}
+            parent{root, c1}
+            parent{root, c2}
+            prime{1, 2}
+            prime{2, 3}
+        ]'main
+    }
+
+    @rules
+    {
+        /* root branches into children with Matula 1 and 2 -> p_1*p_2 = 6. */
+        [matula{c1, 1}, matula{c2, 2}, parent{root, c1}, parent{root, c2},
+         prime{1, 2}, prime{2, 3}]'test_topo ->
+            [matula{root, 6}]'test_topo
+
+        assert_equal("matula_product", 6, matula{root})
+    }
+}
+
+@test differential_order_test
+{
+    @description "Elementary differentials: product order k*r+1, chain order r+s"
+
+    @setup
+    {
+        [test_topo
+            order{child, 3}            /* subtree of order 3 */
+            branches{node, child, 2}   /* 2 such children -> product */
+            order{inner, 4}
+            order{outer, 5}
+            nested{outer, inner}       /* nesting -> chain */
+        ]'main
+    }
+
+    @rules
+    {
+        /* product: 2*3 + 1 = 7 */
+        [order{child, 3}, branches{node, child, 2}]'test_topo ->
+            [order{node, 7}]'test_topo
+
+        /* chain: 5 + 4 = 9 */
+        [order{outer, 5}, order{inner, 4}, nested{outer, inner}]'test_topo ->
+            [order{combined, 9}]'test_topo
+
+        assert_equal("product_rule_order", 7, order{node})
+        assert_equal("chain_rule_order", 9, order{combined})
+    }
+}
+
+@test partition_selection_test
+{
+    @description "Partition function selects the fittest topology as root"
+
+    @setup
+    {
+        [test_topo
+            fit{t1, 40}
+            fit{t2, 85}    /* fittest -> selected root */
+            fit{t3, 60}
+        ]'main
+    }
+
+    @rules
+    {
+        [fit{t1, 40}, fit{t2, 85}, fit{t3, 60}]'test_topo ->
+            [selected_root{t2}, pruned{t1}, pruned{t3}]'test_topo
+
+        assert_equal("partition_root", 85, selected_fitness{1})
+    }
+}
+
+/* ============================================================================
  * TEST RUNNER
  * ============================================================================ */
 
@@ -1633,6 +1929,22 @@
     psi_satisfaction_test
     psi_emotion_bridge_test
 
+    /* Unified cognitive cycle */
+    uni_recall_premise_test
+    uni_reason_conclusion_test
+    uni_emote_bridge_test
+    uni_learn_revision_test
+    uni_integrate_persist_test
+    uni_reward_to_loss_test
+
+    /* Membrane arity topology */
+    radix_lane_count_test
+    matula_leaf_test
+    matula_chain_test
+    matula_product_test
+    differential_order_test
+    partition_selection_test
+
     [test_suite
         total_tests{t}
         passed_tests{p}
@@ -1658,8 +1970,8 @@
 @expected_output
 {
     test_results{
-        "Total Tests": 54,
-        "Passed": 54,
+        "Total Tests": 66,
+        "Passed": 66,
         "Failed": 0,
         "Success Rate": "100%"
     }
