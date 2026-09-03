@@ -40,6 +40,7 @@ This implementation demonstrates how neural network algorithms can be expressed 
 - **Unified Cognitive Cycle**: the a9nn EchoBeats spine with PLN (REASON), OpenPsi (EMOTE) and AtomSpace (RECALL/INTEGRATE) overlaid — an agent that *reasons, wants and remembers*
 - **Arity Topologies**: mixed-radix membrane bases (`[2]^n` binary, `[3]^n` ternary, `[2|2]^n` quaternionic, `[5]^n` quinternary) executing heterogeneous ops in one parallel step; Matula/prime-power indexing of membrane trees; partition-function root selection; elementary differentials via product/chain rules
 - **P-Systems ↔ B-Series Bridge**: rooted trees and membrane nests are the same combinatorial object, so evolution and gradient descent run in one parallel step; elementary differentials get exact integer (Matula) expressions as the gradient basis; RK order conditions as finite tree sums; orbifold quotient = "natural selection as root selection"
+- **Closure Isomorphism**: `{circle ~ cycle ~ closure}` — one closure operator in spatial/temporal/causal frames, mapping `.mli`→CNN, `.gli`→RNN, `.nli`→GNN; the 3×3 ennead solves the frame problem; relevance flows like Ricci flow with the gauge field as the curvature lever
 
 ## Installation
 
@@ -467,6 +468,35 @@ selection.
 @module orbifold_quotient           /* canonify (min Matula); root select  */
 ```
 
+### Closure Isomorphism & the Frame Problem (closures.pli)
+
+`{circle ~ cycle ~ closure}` — a single closure operator instantiated in three
+frames, each a dialect of the platform *and* a neural architecture:
+
+| Frame | Closure | Dialect | Architecture | Conserved (Noether) |
+|-------|---------|---------|--------------|---------------------|
+| **Spatial** | structural (receptive field) | `.mli` morphological | **CNN** | translation (weight sharing) |
+| **Temporal** | procedural (recurrence) | `.gli` generational | **RNN** | time-translation (periodicity) |
+| **Causal** | relational (message passing) | `.nli` nomological | **GNN** | symmetry currents (Lie algebra) |
+
+The **ennead** (3 poles × 3 frames = 9 dimensions) solves the frame problem: a
+balanced ennead is precisely the condition that no frame boundary needs
+re-specifying as the situation changes. Relevance flows like **Ricci flow**;
+the lever parameterizing curvature is the **gauge field** (connection), whose
+parallel transport of n-forms has holonomy equal to the curvature; curvature
+sign (convex/concave) drives the conserved currents, and gauge invariance is
+itself the conserved quantity.
+
+#### Modules
+```plingua
+@module closure_isomorphism   /* one closure, three frames, inter-mapped  */
+@module spatial_cnn(k)        /* .mli: receptive field = spatial closure  */
+@module temporal_rnn(period)  /* .gli: recurrence; periodic time loops    */
+@module causal_gnn            /* .nli: message passing; Noether currents  */
+@module ennead_frame          /* 3x3 balance resolves the frame problem   */
+@module ricci_relevance       /* g'=g-2Ric*g; gauge field = curvature lever */
+```
+
 ### Inference
 
 #### Predict
@@ -612,8 +642,8 @@ plingua test_nn.pli
 plingua test_extensions.pli
 
 # Expected output:
-# Total Tests: 72
-# Passed: 72
+# Total Tests: 78
+# Passed: 78
 # Failed: 0
 # Success Rate: 100%
 ```
@@ -663,6 +693,7 @@ plingua test_extensions.pli
 - ✅ Unified cycle: RECALL premises, REASON conclusion, EMOTE bridge, LEARN revision, INTEGRATE persistence
 - ✅ Mixed-radix lane counts, Matula leaf/chain/product indexing, differential orders, partition selection
 - ✅ B-Series bridge: tree↔nest planting, elementary weights, gradient step, RK order-1, orbifold canonify
+- ✅ Closure isomorphism (spatial/temporal/causal), CNN/RNN/GNN maps, ennead balance, Ricci/gauge lever
 
 ## Running Demos
 
@@ -876,6 +907,7 @@ Completed extensions:
 - [x] Unified cognitive cycle (PLN + OpenPsi + AtomSpace over the EchoBeats spine) — `unified.pli`
 - [x] Membrane arity topologies (mixed-radix bases, Matula indexing, partition selection) — `topology.pli`
 - [x] P-Systems ↔ B-Series bridge (shared tree/nest topology, gradient descent as ODE flow, orbifold root selection) — `bseries.pli`
+- [x] Closure isomorphism across spatial/temporal/causal frames (`.mli`→CNN, `.gli`→RNN, `.nli`→GNN) + ennead frame resolution + Ricci-flow relevance — `closures.pli`
 
 ## References
 
@@ -923,7 +955,7 @@ The following modules extend the core implementation with advanced features:
 | `layers.pli` | LookupTable (embedding), Bilinear, SparseLinear, Xavier/He initialization |
 | `attention.pli` | Scaled dot-product attention, multi-head attention, transformer encoder block, native batch processing |
 | `snp.pli` | Spiking Neural P Systems: SN P neurons, synapses, spike-train encoding, rate-coded bridge, SN P XOR |
-| `test_extensions.pli` | 72 tests covering all extension, v2.1, v2.2, v2.3, v2.4, v2.5 and v2.6 modules |
+| `test_extensions.pli` | 78 tests covering all extension, v2.1, v2.2, v2.3, v2.4, v2.5, v2.6 and v2.7 modules |
 
 ## Extensions (v2.2)
 
@@ -960,6 +992,12 @@ The following modules extend the core implementation with advanced features:
 | Module | Description |
 |--------|-------------|
 | `bseries.pli` | P-Systems ↔ B-Series bridge: rooted trees planted in membrane nests (shared topology), branches threaded through complementary nests so interfaces coincide. `tree_nest_bridge`, `elementary_weights` (order/density/symmetry → `b(t)=1/(σ·γ)` from Matula integers), `bseries_gradient_step` (gradient descent = ODE flow: `w ← w − lr·grad/(σ·γ)`), `rk_order_conditions` (order 1–3 as finite tree sums), `orbifold_quotient` (canonify to minimal Matula; natural selection as root selection). Unites P-System evolution with B-series gradient descent in one maximally-parallel step. |
+
+## Extensions (v2.7)
+
+| Module | Description |
+|--------|-------------|
+| `closures.pli` | Closure isomorphism across frames: `{circle ~ cycle ~ closure}` — one closure operator in spatial/temporal/causal frames, mapping `.mli`→CNN (receptive field = spatial closure), `.gli`→RNN (recurrence = temporal closure), `.nli`→GNN (message passing = relational closure). `closure_isomorphism`, `spatial_cnn`, `temporal_rnn`, `causal_gnn` (Noether conserved currents), `ennead_frame` (3×3 balance solves the frame problem), `ricci_relevance` (Ricci-flow `g′=g−2·Ric·g`; the gauge field/connection is the curvature lever — holonomy of parallel transport = curvature; gauge invariance is the conserved quantity). |
 
 ### Looking ahead: nD membranes and parallel ledgers
 

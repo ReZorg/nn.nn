@@ -72,6 +72,9 @@
             module{bseries,               "1.0.0", [topology,
                                                     backpropagation,
                                                     integration]}
+
+            /* v2.7 extension modules */
+            module{closures,              "1.0.0", [topology, integration]}
         ]'main
     }
 

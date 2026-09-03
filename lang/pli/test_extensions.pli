@@ -37,6 +37,7 @@
 @import "unified.pli"
 @import "topology.pli"
 @import "bseries.pli"
+@import "closures.pli"
 @import "test_nn.pli"   /* reuse test_framework */
 
 /* ============================================================================
@@ -1981,6 +1982,156 @@
 }
 
 /* ============================================================================
+ * CLOSURE ISOMORPHISM & ENNEAD FRAME TESTS
+ * {circle ~ cycle ~ closure}: one closure in spatial/temporal/causal frames,
+ * mapped to .mli->CNN, .gli->RNN, .nli->GNN; ennead balance; Ricci/gauge lever.
+ * ============================================================================ */
+
+@test closure_isomorphism_test
+{
+    @description "A structural closure maps to procedural, then relational"
+
+    @setup
+    {
+        [test_frame
+            structural_closure{X}
+            temporal_map{}
+            causal_map{}
+        ]'main
+    }
+
+    @rules
+    {
+        [structural_closure{X}, temporal_map{}]'test_frame ->
+            [procedural_closure{X}]'test_frame
+
+        [procedural_closure{X}, causal_map{}]'test_frame ->
+            [relational_closure{X}]'test_frame
+
+        assert_equal("closure_isomorphic", 1, relational_closure{X})
+    }
+}
+
+@test spatial_cnn_closure_test
+{
+    @description "Spatial closure (.mli->CNN): shared kernel convolves every site"
+
+    @setup
+    {
+        [test_spatial
+            site{1, 80}           /* x100 */
+            kernel{1, 50}         /* 0.50 weight */
+        ]'main
+    }
+
+    @rules
+    {
+        /* conv = 80*50/100 = 40 */
+        [site{1, 80}, kernel{1, 50}]'test_spatial ->
+            [site{1, 80}, conv{1, 40}]'test_spatial
+
+        assert_equal("spatial_conv", 40, conv{1})
+    }
+}
+
+@test temporal_rnn_closure_test
+{
+    @description "Temporal closure (.gli->RNN): loop closes after p steps"
+
+    @setup
+    {
+        [test_temporal
+            hidden{4, 64}         /* t=4 */
+            period{2}             /* period 2 -> 4 mod 2 = 0 closes */
+        ]'main
+    }
+
+    @rules
+    {
+        [hidden{4, 64}, period{2}]'test_temporal ->
+            [cycle_closed{4}]'test_temporal
+            where (4 mod 2) = 0
+
+        assert_equal("temporal_loop_closed", 4, cycle_closed{4})
+    }
+}
+
+@test causal_gnn_noether_test
+{
+    @description "Causal closure (.nli->GNN): symmetry yields conserved current"
+
+    @setup
+    {
+        [test_causal
+            symmetry{translation}
+            current{momentum, 100}
+        ]'main
+    }
+
+    @rules
+    {
+        [symmetry{translation}, current{momentum, 100}]'test_causal ->
+            [conserved{momentum, 100}]'test_causal
+
+        assert_equal("noether_conserved", 100, conserved{momentum})
+    }
+}
+
+@test ennead_balance_test
+{
+    @description "Ennead: low spread across the 9 dims resolves the frame problem"
+
+    @setup
+    {
+        [test_ennead
+            ennead{agent, spatial, 50}
+            ennead{arena, temporal, 55}
+        ]'main
+    }
+
+    @rules
+    {
+        /* spread = |50 - 55| = 5 < 20 -> frame resolved */
+        [ennead{agent, spatial, 50}, ennead{arena, temporal, 55}]'test_ennead ->
+            [spread{5}]'test_ennead
+
+        [spread{5}]'test_ennead -> [frame_resolved{1}]'test_ennead
+            where 5 < 20
+
+        assert_equal("ennead_frame_resolved", 1, frame_resolved{1})
+    }
+}
+
+@test ricci_gauge_lever_test
+{
+    @description "Ricci flow: metric evolves by -2*Ric*g; holonomy = curvature"
+
+    @setup
+    {
+        [test_gauge
+            metric{100}           /* g = 1.00 (x100) */
+            ricci{25}             /* Ric = +0.25 (convex) */
+            connection{A}
+            loop{L}
+        ]'main
+    }
+
+    @rules
+    {
+        /* g' = 100 - 2*25*100/100 = 100 - 50 = 50 */
+        [metric{100}, ricci{25}]'test_gauge ->
+            [metric{50}]'test_gauge
+
+        /* Gauge field (connection) -> parallel transport holonomy = curvature */
+        [connection{A}, loop{L}]'test_gauge ->
+            [holonomy{L}, curvature{L}]'test_gauge
+
+        assert_equal("ricci_metric_flow", 50, metric{1})
+        assert_equal("gauge_holonomy_curvature", 1, curvature{L})
+    }
+}
+
+/* ============================================================================
  * TEST RUNNER
  * ============================================================================ */
 
@@ -2106,6 +2257,14 @@
     rk_order1_test
     orbifold_canonify_test
 
+    /* Closure isomorphism & ennead frame */
+    closure_isomorphism_test
+    spatial_cnn_closure_test
+    temporal_rnn_closure_test
+    causal_gnn_noether_test
+    ennead_balance_test
+    ricci_gauge_lever_test
+
     [test_suite
         total_tests{t}
         passed_tests{p}
@@ -2131,8 +2290,8 @@
 @expected_output
 {
     test_results{
-        "Total Tests": 72,
-        "Passed": 72,
+        "Total Tests": 78,
+        "Passed": 78,
         "Failed": 0,
         "Success Rate": "100%"
     }

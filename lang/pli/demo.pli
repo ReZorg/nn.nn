@@ -1199,6 +1199,56 @@
 }
 
 /* ============================================================================
+ * DEMO 26: Closure Isomorphism & the Frame Problem
+ * ============================================================================ */
+
+@demo closure_frame_demo
+{
+    @description "{circle~cycle~closure}: one closure in spatial/temporal/causal
+     * frames -> .mli CNN, .gli RNN, .nli GNN; ennead solves the frame problem;
+     * the gauge field is the curvature lever (Ricci-flow relevance)"
+
+    @membrane_structure
+    {
+        [frames
+            spatial{nbhd}          /* -> structural closure (CNN)   */
+            temporal{step}         /* -> procedural closure (RNN)   */
+            causal{aggregate}      /* -> relational closure (GNN)   */
+        ]'main
+
+        [ennead
+            ennead{agent, spatial, 50}
+            ennead{arena, temporal, 52}
+            ennead{relation, causal, 51}
+        ]'main
+
+        [gauge
+            metric{100}
+            ricci{25}              /* convex curvature */
+            connection{A}
+            loop{L}
+        ]'main
+    }
+
+    @execution
+    {
+        closure_isomorphism
+        ennead_frame
+        ricci_relevance
+
+        []'main (display{
+            "Closure Isomorphism: {circle ~ cycle ~ closure}",
+            "Spatial  (.mli)": "structural closure = receptive field -> CNN",
+            "Temporal (.gli)": "procedural closure = recurrence -> RNN",
+            "Causal   (.nli)": "relational closure = message passing -> GNN",
+            "Ennead 3x3": "poles x frames; low spread => frame problem solved",
+            "Curvature lever": "the gauge field (connection); holonomy = curvature",
+            "Ricci flow": "g' = g - 2*Ric*g ; sign drives Noether currents"
+        }, out)
+    }
+}
+
+/* ============================================================================
  * MAIN DEMO RUNNER
  * ============================================================================ */
 
@@ -1244,6 +1294,7 @@
         "23. Unified Cognitive Cycle (reason + want + remember)",
         "24. Mixed-Radix Parallel Ops (membrane arity topologies)",
         "25. P-Systems <-> B-Series Bridge (evolution = gradient flow)",
+        "26. Closure Isomorphism & the Frame Problem (.mli/.gli/.nli)",
         "",
         "Running all demos..."
     }, out)
@@ -1274,6 +1325,7 @@
     unified_cycle_demo
     mixed_radix_demo
     bseries_bridge_demo
+    closure_frame_demo
     
     /* Conclusion */
     []'main (display{
