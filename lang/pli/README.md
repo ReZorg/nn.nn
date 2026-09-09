@@ -33,6 +33,14 @@ This implementation demonstrates how neural network algorithms can be expressed 
 - **Neuroevolution**: Genome membranes, mutation, crossover, division-based reproduction, tournament selection, NEAT-style topology evolution
 - **Bayesian Layers**: Weight distributions, reparameterization trick, KL regularization, Monte-Carlo uncertainty estimates
 - **Transformer Decoder**: Causal masking, masked self-attention, cross-attention, decoder stacks, positional encodings, greedy decoding
+- **AtomSpace**: OpenCog-style hypergraph knowledge base — atoms as membranes, truth/attention values, ECAN attention spreading, Hebbian learning, pattern matching, attentional focus
+- **a9nn NNECCO Agent**: full cognitive architecture — Echo State Reservoir, 12-step EchoBeats loop, emotion processing, consciousness layers (L0–L3), episodic memory, parallel LLaMA pool, hardware-style registers
+- **PLN**: Probabilistic Logic Networks — deduction, induction, abduction, revision, conjunction, disjunction, negation, modus ponens over the AtomSpace (maximally-parallel forward chaining)
+- **OpenPsi**: Dörner Psi motivational system — demands/drives, goal hierarchy, modulators, action selection, satisfaction feedback that drives the a9nn emotion unit
+- **Unified Cognitive Cycle**: the a9nn EchoBeats spine with PLN (REASON), OpenPsi (EMOTE) and AtomSpace (RECALL/INTEGRATE) overlaid — an agent that *reasons, wants and remembers*
+- **Arity Topologies**: mixed-radix membrane bases (`[2]^n` binary, `[3]^n` ternary, `[2|2]^n` quaternionic, `[5]^n` quinternary) executing heterogeneous ops in one parallel step; Matula/prime-power indexing of membrane trees; partition-function root selection; elementary differentials via product/chain rules
+- **P-Systems ↔ B-Series Bridge**: rooted trees and membrane nests are the same combinatorial object, so evolution and gradient descent run in one parallel step; elementary differentials get exact integer (Matula) expressions as the gradient basis; RK order conditions as finite tree sums; orbifold quotient = "natural selection as root selection"
+- **Closure Isomorphism**: `{circle ~ cycle ~ closure}` — one closure operator in spatial/temporal/causal frames, mapping `.mli`→CNN, `.gli`→RNN, `.nli`→GNN; the 3×3 ennead solves the frame problem; relevance flows like Ricci flow with the gauge field as the curvature lever
 
 ## Installation
 
@@ -288,6 +296,207 @@ Backward: Gradient ← Weight × Gradient ← Loss
 /* Autoregressive generation via argmax over last-position logits */
 ```
 
+### AtomSpace (atomspace.pli)
+
+The P-Systems counterpart of `lang/a9nn/AtomSpace.lua`: an OpenCog-style
+hypergraph knowledge base where **atoms are membranes** and attention
+spreading is native multiset rewriting.
+
+#### Atoms (Nodes and Links)
+```plingua
+@module atom_node(id, type, name, s0, c0, sti0, lti0)
+/* A typed, named leaf atom membrane carrying tv{s,c} and av{sti,lti} */
+
+@module atom_link(id, type)
+/* A link membrane that CONTAINS its endpoint atom membranes, */
+/* so hypergraph nesting is structural; endpoints record incoming ids */
+```
+
+#### Truth-Value Revision
+```plingua
+@module tv_revision
+/* Merging two observations weight-averages strength by count (k=1): */
+/* s' = (s1*c1 + s2*c2)/(c1+c2);  c' = (c1+c2)*100/(c1+c2+100) */
+```
+
+#### ECAN Attention Spreading
+```plingua
+@module ecan_spread(wage)
+/* STI is a conserved currency: focused atoms pay a wage that flows as  */
+/* income to their link-neighbours via antiport exchange. One           */
+/* maximally-parallel step diffuses STI across the whole focus.         */
+```
+
+#### Hebbian Learning
+```plingua
+@module hebbian_learning(strength0)
+/* Co-focused atoms emit simultaneous pulses; a pulse pair wires a      */
+/* symmetric HebbianLink ("fire together, wire together").              */
+```
+
+#### Pattern Matching and Attentional Focus
+```plingua
+@module atomspace_matcher            /* query_type{T} / query_link{T,X} */
+@module attentional_focus(threshold) /* in_focus{} is derived, not stored */
+```
+
+### a9nn NNECCO Agent (a9nn.pli)
+
+The P-Systems counterpart of `lang/a9nn/NNECCOAgent.lua`: the full NNECCO
+cognitive architecture, layered on `atomspace.pli`. The 12-beat EchoBeats
+cycle that Lua runs as a sequential method chain becomes a single
+maximally-parallel rule system phase-locked by a program-counter register.
+
+#### Subsystems
+```plingua
+@module echo_reservoir(in_size, reservoir_n, spectral_radius, leak_rate)
+/* Echo State Network: leaky-integrator neurons, recurrent synapse objects */
+
+@module emotion_unit          /* 8 channels: curiosity, joy, surprise, ...   */
+@module consciousness(layer0) /* L0 DORMANT .. L3 META, loss-driven REFLECT  */
+@module episodic_memory(capacity) /* prioritised experience replay          */
+@module llama_pool(num_instances, base_port)  /* least-load dispatch, stub  */
+@module planner(action_size)  /* emotion-modulated argmax action selection  */
+```
+
+#### The Agent and the EchoBeats Cycle
+```plingua
+@model nnecco_agent(state_size, action_size, reservoir_n,
+                    num_llama, base_port, consciousness0)
+/* Top-level composite with hardware registers R0..R4, PC, STA */
+
+@module echobeats_driver
+/* PC-gated 12-beat loop:                                  */
+/* 1 PERCEIVE  2 FILTER  3 RESONATE  4 ENCODE              */
+/* 5 RECALL    6 REASON  7 EMOTE     8 PLAN                */
+/* 9 LEARN    10 REFLECT 11 EXPRESS  12 INTEGRATE          */
+```
+
+### PLN (pln.pli)
+
+Probabilistic Logic Networks over `atomspace.pli`: OpenCog's inference engine
+as membrane rules. Counterpart of ReZorg/plingua's `opencog_pln.pli`, in the
+pure `@module`/`@rules` dialect. Forward chaining is a **single
+maximally-parallel transition**, not a loop.
+
+#### Inference Rules
+```plingua
+@module pln_deduction    /* A->B, B->C |- A->C : s = sAB*sBC/100          */
+@module pln_induction    /* A->B, A->C |- B->C : s = sAB*sAC/100          */
+@module pln_abduction    /* A->B, B    |- A    : tentative (c * 50/100)   */
+@module pln_operators    /* AND/OR/NOT/modus-ponens truth-value formulas  */
+@module pln_revision     /* merge duplicate conclusions (count-based TV)  */
+@module pln_forward_chain(max_cycles)  /* bounded parallel forward chain  */
+```
+
+### OpenPsi (openpsi.pli)
+
+Dörner Psi motivational system: demands (competence, integrity, exploration,
+affiliation) accrue tension, become urgent, activate goals, and drive action
+selection. **Closes the loop with a9nn**: modulators map onto the a9nn
+`emotion_unit` channels, so motivation is *felt* and outcomes feed back as
+reward.
+
+#### Subsystems
+```plingua
+@module psi_demands           /* demand{id, tension, rate, threshold}     */
+@module psi_goals             /* urgent demand -> active_goal             */
+@module psi_action_selection  /* argmax expected relief -> action_token   */
+@module psi_satisfaction      /* reward lowers demand tension (feedback)  */
+@module psi_modulators        /* activation/resolution/... -> emotion     */
+@model  openpsi_system        /* composite, psi_pc-phase-locked           */
+```
+
+### Unified Cognitive Cycle (unified.pli)
+
+The integration layer: the a9nn EchoBeats spine with PLN, OpenPsi and the
+AtomSpace overlaid so the agent *reasons, wants and remembers*. Counterpart of
+ReZorg/plingua's `opencog_unified_agi.pli`. Each subsystem stays in its own
+membrane; the PC register phase-locks them and objects flow across boundaries.
+
+#### Beat overlays
+```plingua
+@module uni_recall(focus_threshold)  /* RECALL  <- AtomSpace ECAN focus   */
+@module uni_reason                   /* REASON  <- PLN forward chain       */
+@module uni_emote                    /* EMOTE   <- OpenPsi modulators      */
+@module uni_learn                    /* LEARN   <- PLN revision + RL loss  */
+@module uni_integrate                /* INTEGRATE-> persist learned atoms  */
+@model  unified_agent(state_size, action_size, reservoir_n,
+                      num_llama, base_port, consciousness0)
+```
+
+### Arity Topologies (topology.pli)
+
+Makes concrete the observation that a membrane tree's *shape* is
+simultaneously a rooted tree (Matula/prime-factorisation number), the arity of
+a categorical logic, a mixed-radix parallel basis, and an evolutionary engine
+whose partition function performs "natural selection as root selection".
+
+#### Mixed-radix bases (heterogeneous parallel ops in one step)
+```plingua
+@module binary_basis(n)        /* [2]^n    -> 2^n boolean lanes           */
+@module ternary_basis(n)       /* [3]^n    -> 3^n trit lanes              */
+@module quaternionic_basis(n)  /* [2|2]^n  -> 4^n orthogonal pairs        */
+@module quinternary_basis(n)   /* [5]^n    -> 5^n lanes                   */
+```
+
+#### Indexing, differentials, selection
+```plingua
+@module matula_index              /* rooted tree <-> prime factorisation   */
+@module elementary_differentials  /* product (k*r+1) & chain (r+s) rules   */
+@module partition_selection       /* Z over free hyper-multiset -> root    */
+```
+
+### P-Systems ↔ B-Series Bridge (bseries.pli)
+
+The rooted trees of a B-series (Runge-Kutta elementary differentials) and
+membrane nests are the *same* combinatorial object (nested parentheses ↔
+ordered rooted trees). This module plants trees in their nests and threads
+branches through complementary nests so P-System **evolution** and B-series
+**gradient descent** run in the same maximally-parallel step — uniting the two
+principal adaptation techniques of ML. Elementary differentials (and the
+j-surfaces of the gradient basis) get exact integer expressions via Matula
+numbers; the orbifold quotient makes "natural selection" act as *root*
+selection.
+
+#### Modules
+```plingua
+@module tree_nest_bridge            /* plant tree in nest; thread branches */
+@module elementary_weights          /* order/density/symmetry -> b=1/(sg)  */
+@module bseries_gradient_step(lr)   /* w <- w - lr*grad/(s*g): flow=update */
+@module rk_order_conditions         /* order 1..3 as finite tree sums      */
+@module orbifold_quotient           /* canonify (min Matula); root select  */
+```
+
+### Closure Isomorphism & the Frame Problem (closures.pli)
+
+`{circle ~ cycle ~ closure}` — a single closure operator instantiated in three
+frames, each a dialect of the platform *and* a neural architecture:
+
+| Frame | Closure | Dialect | Architecture | Conserved (Noether) |
+|-------|---------|---------|--------------|---------------------|
+| **Spatial** | structural (receptive field) | `.mli` morphological | **CNN** | translation (weight sharing) |
+| **Temporal** | procedural (recurrence) | `.gli` generational | **RNN** | time-translation (periodicity) |
+| **Causal** | relational (message passing) | `.nli` nomological | **GNN** | symmetry currents (Lie algebra) |
+
+The **ennead** (3 poles × 3 frames = 9 dimensions) solves the frame problem: a
+balanced ennead is precisely the condition that no frame boundary needs
+re-specifying as the situation changes. Relevance flows like **Ricci flow**;
+the lever parameterizing curvature is the **gauge field** (connection), whose
+parallel transport of n-forms has holonomy equal to the curvature; curvature
+sign (convex/concave) drives the conserved currents, and gauge invariance is
+itself the conserved quantity.
+
+#### Modules
+```plingua
+@module closure_isomorphism   /* one closure, three frames, inter-mapped  */
+@module spatial_cnn(k)        /* .mli: receptive field = spatial closure  */
+@module temporal_rnn(period)  /* .gli: recurrence; periodic time loops    */
+@module causal_gnn            /* .nli: message passing; Noether currents  */
+@module ennead_frame          /* 3x3 balance resolves the frame problem   */
+@module ricci_relevance       /* g'=g-2Ric*g; gauge field = curvature lever */
+```
+
 ### Inference
 
 #### Predict
@@ -433,8 +642,8 @@ plingua test_nn.pli
 plingua test_extensions.pli
 
 # Expected output:
-# Total Tests: 30
-# Passed: 30
+# Total Tests: 78
+# Passed: 78
 # Failed: 0
 # Success Rate: 100%
 ```
@@ -470,6 +679,21 @@ plingua test_extensions.pli
 - ✅ Membrane-division reproduction and tournament selection
 - ✅ Bayesian reparameterized weights and Monte-Carlo mean
 - ✅ Causal mask and decoder-block residual connection
+- ✅ Atom node/link membranes and hypergraph nesting
+- ✅ Truth-value revision (count-weighted strength merge)
+- ✅ ECAN attention spreading (STI conservation, wage→income)
+- ✅ Hebbian link formation between co-focused atoms
+- ✅ AtomSpace pattern matching and attentional focus
+- ✅ a9nn reservoir leaky tick and EchoBeats PC cycling
+- ✅ Emotion update and consciousness REFLECT transitions
+- ✅ Episodic memory push/recall and LLaMA least-load dispatch
+- ✅ PLAN argmax action selection and INTEGRATE episode logging
+- ✅ PLN deduction, induction, modus ponens and negation truth values
+- ✅ OpenPsi demand urgency, action selection, satisfaction and emotion bridge
+- ✅ Unified cycle: RECALL premises, REASON conclusion, EMOTE bridge, LEARN revision, INTEGRATE persistence
+- ✅ Mixed-radix lane counts, Matula leaf/chain/product indexing, differential orders, partition selection
+- ✅ B-Series bridge: tree↔nest planting, elementary weights, gradient step, RK order-1, orbifold canonify
+- ✅ Closure isomorphism (spatial/temporal/causal), CNN/RNN/GNN maps, ennead balance, Ricci/gauge lever
 
 ## Running Demos
 
@@ -676,6 +900,14 @@ Completed extensions:
 - [x] Neuroevolution via membrane division rules — `neuroevolution.pli`
 - [x] Probabilistic P-Systems for Bayesian layers — `bayesian.pli`
 - [x] Full transformer decoder with causal masking — `transformer_decoder.pli`
+- [x] AtomSpace hypergraph knowledge base (ECAN, Hebbian, matcher) — `atomspace.pli`
+- [x] a9nn NNECCO cognitive agent (reservoir, EchoBeats, emotion, LLaMA pool) — `a9nn.pli`
+- [x] PLN probabilistic inference (deduction/induction/abduction/modus-ponens) — `pln.pli`
+- [x] OpenPsi motivational system (demands, goals, action selection, emotion bridge) — `openpsi.pli`
+- [x] Unified cognitive cycle (PLN + OpenPsi + AtomSpace over the EchoBeats spine) — `unified.pli`
+- [x] Membrane arity topologies (mixed-radix bases, Matula indexing, partition selection) — `topology.pli`
+- [x] P-Systems ↔ B-Series bridge (shared tree/nest topology, gradient descent as ODE flow, orbifold root selection) — `bseries.pli`
+- [x] Closure isomorphism across spatial/temporal/causal frames (`.mli`→CNN, `.gli`→RNN, `.nli`→GNN) + ennead frame resolution + Ricci-flow relevance — `closures.pli`
 
 ## References
 
@@ -723,7 +955,7 @@ The following modules extend the core implementation with advanced features:
 | `layers.pli` | LookupTable (embedding), Bilinear, SparseLinear, Xavier/He initialization |
 | `attention.pli` | Scaled dot-product attention, multi-head attention, transformer encoder block, native batch processing |
 | `snp.pli` | Spiking Neural P Systems: SN P neurons, synapses, spike-train encoding, rate-coded bridge, SN P XOR |
-| `test_extensions.pli` | 30 tests covering all extension, v2.1 and v2.2 modules |
+| `test_extensions.pli` | 78 tests covering all extension, v2.1, v2.2, v2.3, v2.4, v2.5, v2.6 and v2.7 modules |
 
 ## Extensions (v2.2)
 
@@ -733,6 +965,57 @@ The following modules extend the core implementation with advanced features:
 | `neuroevolution.pli` | Neuroevolution via membrane division: genome membranes, point mutation, antiport crossover, divide-and-mutate reproduction, tournament selection, NEAT-style structural mutation, evolution loop |
 | `bayesian.pli` | Probabilistic P-Systems for Bayesian layers: Gaussian sampler (central-limit), Bayes-by-Backprop linear layer, KL divergence regularizer, Monte-Carlo predictive mean/variance |
 | `transformer_decoder.pli` | Full transformer decoder with causal masking: masked self-attention, cross-attention, masked multi-head attention, decoder blocks/stacks, sinusoidal positional encoding, full encoder-decoder transformer, greedy decoding |
+
+## Extensions (v2.3)
+
+| Module | Description |
+|--------|-------------|
+| `atomspace.pli` | OpenCog-style hypergraph knowledge base: atom nodes/links as membranes (structural nesting), truth values with count-based revision, attention values (STI/LTI), ECAN attention spreading as conserved-currency antiport exchange, Hebbian learning, pattern matching, derived attentional focus. Mirrors `lang/a9nn/AtomSpace.lua`. |
+| `a9nn.pli` | NNECCO cognitive agent: Echo State Reservoir membrane (leaky-integrator neurons, spectral radius), 12-beat EchoBeats loop phase-locked by a PC register, emotion processing unit (8 channels), consciousness layers L0–L3 with loss-driven meta-cognition, prioritised episodic memory, parallel LLaMA pool (least-load antiport dispatch, stub mode), hardware-style registers R0–R4/PC/STA. Mirrors `lang/a9nn/NNECCOAgent.lua`. |
+
+## Extensions (v2.4)
+
+| Module | Description |
+|--------|-------------|
+| `pln.pli` | Probabilistic Logic Networks over the AtomSpace: deduction, induction, abduction, revision, conjunction, disjunction, negation, modus ponens with SimpleTruthValue strength/confidence formulas; maximally-parallel forward chaining (`pln_forward_chain`). Counterpart of ReZorg/plingua `opencog_pln.pli`. |
+| `openpsi.pli` | Dörner Psi motivational system: demands (competence/integrity/exploration/affiliation) with accrual→urgency, goal activation, argmax action selection, satisfaction feedback, and modulators that drive the a9nn `emotion_unit`. Counterpart of ReZorg/plingua `opencog_openpsi.pli`. |
+
+## Extensions (v2.5)
+
+| Module | Description |
+|--------|-------------|
+| `unified.pli` | Unified cognitive cycle: the a9nn EchoBeats spine with PLN (REASON), OpenPsi (EMOTE) and AtomSpace (RECALL/INTEGRATE) overlaid — the agent reasons, wants and remembers. `uni_recall`/`uni_reason`/`uni_emote`/`uni_learn`/`uni_integrate` beat overlays + `unified_agent` composite. Counterpart of ReZorg/plingua `opencog_unified_agi.pli`. |
+| `topology.pli` | Membrane arity topologies: mixed-radix parallel bases (`binary/ternary/quaternionic/quinternary`, i.e. `[2]^n`/`[3]^n`/`[2|2]^n`/`[5]^n`) executing heterogeneous ops in one step; Matula/prime-power indexing of membrane trees (rooted-tree ↔ prime-factorisation); elementary differentials via product (`k*r+1`) and chain (`r+s`) rules; partition-function root selection over free hyper-multisets. |
+
+## Extensions (v2.6)
+
+| Module | Description |
+|--------|-------------|
+| `bseries.pli` | P-Systems ↔ B-Series bridge: rooted trees planted in membrane nests (shared topology), branches threaded through complementary nests so interfaces coincide. `tree_nest_bridge`, `elementary_weights` (order/density/symmetry → `b(t)=1/(σ·γ)` from Matula integers), `bseries_gradient_step` (gradient descent = ODE flow: `w ← w − lr·grad/(σ·γ)`), `rk_order_conditions` (order 1–3 as finite tree sums), `orbifold_quotient` (canonify to minimal Matula; natural selection as root selection). Unites P-System evolution with B-series gradient descent in one maximally-parallel step. |
+
+## Extensions (v2.7)
+
+| Module | Description |
+|--------|-------------|
+| `closures.pli` | Closure isomorphism across frames: `{circle ~ cycle ~ closure}` — one closure operator in spatial/temporal/causal frames, mapping `.mli`→CNN (receptive field = spatial closure), `.gli`→RNN (recurrence = temporal closure), `.nli`→GNN (message passing = relational closure). `closure_isomorphism`, `spatial_cnn`, `temporal_rnn`, `causal_gnn` (Noether conserved currents), `ennead_frame` (3×3 balance solves the frame problem), `ricci_relevance` (Ricci-flow `g′=g−2·Ric·g`; the gauge field/connection is the curvature lever — holonomy of parallel transport = curvature; gauge invariance is the conserved quantity). |
+
+### Looking ahead: nD membranes and parallel ledgers
+
+Two directions this port is positioned for:
+
+- **nD generalisation.** 1D/2D/3D spatial models (as in ReZorg's M-Lingua
+  `.mli`) generalise to *n-dimensional* membrane arrangements. A future
+  dialect (candidate extensions `.dli`/`.vli` — both currently free) would
+  make dimension a parameter rather than a fixed grid, so convolution,
+  pooling and spatial self-assembly are rank-generic (cf. `lang/pl/nn_nd.pl`,
+  which already does rank-parametric convolution in Prolog).
+
+- **Massively-parallel structured computation.** Because P-System rules are
+  maximally parallel, a chart of accounts for a whole supply chain — a
+  thousand entities, each a membrane holding `account{acct, balance}` objects
+  — settles *all* inter-entity transfers in a constant number of membrane
+  steps, independent of entity count (see demo 22, `parallel_ledger_demo`).
+  Double-entry conservation holds by construction; O(1) steps, not O(n).
 
 ### Weight Interchange Format
 

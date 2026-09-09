@@ -52,6 +52,29 @@
             module{transformer_decoder,   "1.0.0", [nn, attention,
                                                     batch_normalization,
                                                     layers, activations]}
+
+            /* v2.3 extension modules */
+            module{atomspace,             "1.0.0", [nn, integration]}
+            module{a9nn,                  "1.0.0", [nn, atomspace,
+                                                    integration]}
+
+            /* v2.4 extension modules */
+            module{pln,                   "1.0.0", [atomspace, integration]}
+            module{openpsi,               "1.0.0", [atomspace, integration,
+                                                    a9nn]}
+
+            /* v2.5 extension modules */
+            module{unified,               "1.0.0", [a9nn, atomspace, pln,
+                                                    openpsi, integration]}
+            module{topology,              "1.0.0", [integration]}
+
+            /* v2.6 extension modules */
+            module{bseries,               "1.0.0", [topology,
+                                                    backpropagation,
+                                                    integration]}
+
+            /* v2.7 extension modules */
+            module{closures,              "1.0.0", [topology, integration]}
         ]'main
     }
 
